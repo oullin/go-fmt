@@ -1,81 +1,36 @@
 # go-fmt
 
-`go-fmt` is a Go coding styles and standards fixer for code produced by humans, agents, and other automations.
+**A semantic style engine and fixer for Go source code.**
 
-The repo exposes:
+`go-fmt` goes beyond `gofmt`. It applies rule-based semantic formatting — enforcing blank-line boundaries around control flow, ensuring type declarations appear at the top of the file, and normalising spacing around `var`, `defer`, and `return` — then finishes with `gofmt` and `goimports`. The result is consistently styled Go, whether the code was written by a person, an agent, or a code generator.
 
-- a reusable engine for checking and formatting Go source files
-- a CLI named `fmt`
-- a rule-based style pipeline instead of preset bundles
+The project ships as a **reusable engine** and a **standalone CLI** (`fmt`). Rules run first, formatters run second — giving you deterministic, layered formatting in a single pass.
 
-## Current Scope
+---
 
-The first built-in semantic rule is `spacing`.
+## Table of Contents
 
-It enforces spacing around control flow, `return`, `defer`, `var`, and type declarations, and it checks that type definitions stay at the beginning of the file.
+- [Quick Start](#quick-start)
+- [CLI](#cli)
+- [Configuration](#configuration)
+- [Spacing Rule](#spacing-rule)
+- [File Discovery](#file-discovery)
+- [Output Formats](#output-formats)
+- [Exit Codes](#exit-codes)
+- [Development](#development)
+- [Package Layout](#package-layout)
 
-Formatting runs in this order:
+---
 
-1. `spacing`
-2. `gofmt`
-3. `goimports`
+## Quick Start
 
-## CLI
-
-The binary is exposed as `fmt`.
-
-```bash
-fmt check [paths...]
-fmt format [paths...]
-```
-
-Common flags:
+**Install the CLI:**
 
 ```bash
-fmt check --config ./go-fmt.yml --format text .
-fmt check --format json .
-fmt check --format agent .
-fmt format .
+go install github.com/oullin/go-fmt/cmd/fmt@latest
 ```
 
-Supported output formats:
-
-- `text`
-- `json`
-- `agent`
-
-Exit behavior:
-
-- `fmt check` exits `0` when no changes are needed
-- `fmt check` exits `1` when violations or errors are found
-- `fmt format` exits `0` when formatting succeeds
-- `fmt format` exits `1` when an error occurs
-
-## Using `fmt` In This Repo
-
-Run the CLI from source without installing it:
-
-```bash
-go run ./cmd/fmt --help
-go run ./cmd/fmt check .
-go run ./cmd/fmt format .
-```
-
-Run against a specific file:
-
-```bash
-go run ./cmd/fmt check ./internal/rules/spacing/spacing.go
-go run ./cmd/fmt format ./internal/rules/spacing/spacing.go
-```
-
-Use the example config in this repo as a starting point:
-
-```bash
-cp go-fmt.yml.example go-fmt.yml
-go run ./cmd/fmt check --config ./go-fmt.yml .
-```
-
-Build the local binary and run it from `./builds/fmt`:
+**Or build from source:**
 
 ```bash
 make build
@@ -83,107 +38,359 @@ make build
 ./builds/fmt format .
 ```
 
-Make targets for day-to-day repo use:
+**Run directly without installing:**
 
 ```bash
-make help
-make config
-make check
-make format
-make check ARGS=./internal/rules/spacing/spacing.go
-make check-json
-make check-agent
+go run ./cmd/fmt check .
+go run ./cmd/fmt format .
 ```
 
-Optional variables:
+---
 
-- `ARGS`: files or directories to target, defaults to `.`
-- `CONFIG`: config path, for example `make check CONFIG=./go-fmt.yml`
-- `OUTPUT`: text output mode for `make check`, defaults to `text`
+## CLI
 
-## Config
+The binary is called `fmt` and has two commands: **check** and **format**.
 
-The default config file is `go-fmt.yml`.
+```
+fmt check  [paths...]   # report violations without writing changes
+fmt format [paths...]   # fix violations and write changes to disc
+```
 
-Example:
+Both commands accept these flags:
+
+| Flag | Description | Default |
+|------|-------------|---------|
+| `--config` | Path to a `go-fmt.yml` config file | auto-detected in working directory |
+| `--format` | Output format: `text`, `json`, or `agent` | `text` |
+
+### Examples
+
+```bash
+# check everything in the current directory
+fmt check .
+
+# check with a specific config and JSON output
+fmt check --config ./go-fmt.yml --format json .
+
+# format a single file
+fmt format ./internal/rules/spacing/spacing.go
+
+# agent-friendly output for CI integrations
+fmt check --format agent .
+```
+
+---
+
+## Configuration
+
+`go-fmt` looks for a `go-fmt.yml` file in the working directory. If none is found, built-in defaults apply. You can also point to a config explicitly with `--config`.
+
+**Copy the example config to get started:**
+
+```bash
+cp go-fmt.yml.example go-fmt.yml
+```
+
+### Full Config Reference
 
 ```yaml
+# Enable or disable individual semantic rules.
 rules:
   spacing:
-    enabled: true
+    enabled: true        # enforce blank-line spacing (default: true)
 
+# Enable or disable post-rule formatters.
 formatters:
-  gofmt: true
-  goimports: true
+  gofmt: true            # run gofmt after rules (default: true)
+  goimports: true        # run goimports after gofmt (default: true)
 
+# Directories to skip entirely during file walking.
 exclude:
   - .git
   - vendor
 
+# Path substrings — any file whose path contains a match is skipped.
 not_path:
   - third_party/generated
 
+# Filename glob patterns — any file whose name matches is skipped.
 not_name:
   - "*.pb.go"
 ```
 
-Config fields:
+| Field | Type | Description |
+|-------|------|-------------|
+| `rules.spacing.enabled` | bool | Toggle the spacing rule on or off |
+| `formatters.gofmt` | bool | Run `gofmt` after semantic rules |
+| `formatters.goimports` | bool | Run `goimports` after `gofmt` |
+| `exclude` | list | Directory names to skip during tree walking |
+| `not_path` | list | Substring matches against full file paths |
+| `not_name` | list | Glob patterns matched against file names |
 
-- `rules.spacing.enabled`: enable or disable the spacing rule
-- `formatters.gofmt`: run `gofmt` after rule-based formatting
-- `formatters.goimports`: run `goimports` after `gofmt`
-- `exclude`: directories to skip while walking trees
-- `not_path`: path substrings to skip
-- `not_name`: filename glob patterns to skip
+> **Note:** `goimports` is optional at runtime. If it is not installed on the system, the engine skips that step silently — no error is raised.
 
-If no config file exists, built-in defaults are used.
+---
+
+## Spacing Rule
+
+The `spacing` rule is the first built-in semantic rule. It inspects Go source files using the AST and enforces consistent blank-line boundaries.
+
+### What It Enforces
+
+**Blank line _before_ control flow and keywords:**
+
+A blank line is required before `if`, `for`, `range`, `switch`, `select`, `defer`, `return`, `continue`, `break`, `goto`, and `fallthrough` — when they are not the first statement in a block.
+
+```go
+// before
+func run() {
+    x := 1
+    if x > 0 {
+        println("positive")
+    }
+    return
+}
+
+// after
+func run() {
+    x := 1
+
+    if x > 0 {
+        println("positive")
+    }
+
+    return
+}
+```
+
+**Blank line _after_ block statements:**
+
+A blank line is required after `if`, `for`, `range`, `switch`, `select`, and `defer` blocks when followed by another statement.
+
+```go
+// before
+func run() {
+    if ready {
+        start()
+    }
+    cleanup()
+}
+
+// after
+func run() {
+    if ready {
+        start()
+    }
+
+    cleanup()
+}
+```
+
+**Blank lines around `var` declarations:**
+
+A blank line is required before and after standalone `var` declarations — unless the preceding or following statement is also a `var` or short assignment (`:=`), in which case they are allowed to stay grouped.
+
+```go
+// before
+func run() {
+    x := setup()
+    var cfg Config
+    process(cfg)
+}
+
+// after
+func run() {
+    x := setup()
+
+    var cfg Config
+
+    process(cfg)
+}
+```
+
+**Type declarations at the top of the file:**
+
+All `type` definitions must appear before any non-type declarations (after the import block). If types are scattered throughout the file, the rule reorders them to the top and reports a violation.
+
+**Blank lines around type declarations:**
+
+Blank lines are required before and after `type` declarations to visually separate them from surrounding code.
+
+### Where It Applies
+
+The spacing rule inspects statement lists inside:
+
+- Function bodies (`BlockStmt`)
+- `case` and `default` clauses (`CaseClause`)
+- `select` communication clauses (`CommClause`)
+
+---
 
 ## File Discovery
 
-The engine:
+When given directories, the engine walks them recursively and collects `.go` files. The following are always skipped:
 
-- accepts files or directories
-- scans `.go` files
-- skips hidden directories, `.git`, and `vendor`
-- skips `*.gen.go`
-- skips files starting with `// Code generated`
+| Skipped | Reason |
+|---------|--------|
+| Hidden directories (`.foo/`) | Convention — not source code |
+| `.git/` | Repository metadata |
+| `vendor/` | Vendored dependencies |
+| `*.gen.go` files | Generated code by convention |
+| Files starting with `// Code generated` | Go standard for generated files |
+| Paths matching `exclude` config | User-defined directory exclusions |
+| Paths matching `not_path` config | User-defined path substring exclusions |
+| Files matching `not_name` config | User-defined filename glob exclusions |
+
+When given individual files, they are used directly (filtering still applies).
+
+If no paths are provided, the engine defaults to the current directory (`.`).
+
+---
+
+## Output Formats
+
+### Text (default)
+
+Human-readable output with relative file paths, violation details, and a summary line.
+
+```
+~ internal/engine/engine.go:42 [spacing] missing blank line before if
+  would apply spacing
+Result: fail. 1 changed, 1 violation(s), 0 error(s).
+```
+
+### JSON
+
+Structured output with full details for each file. Useful for editors, dashboards, and tooling.
+
+```json
+{
+  "result": "fail",
+  "files": 1,
+  "changed": 1,
+  "results": [
+    {
+      "file": "engine.go",
+      "applied": ["spacing"],
+      "violations": [
+        {
+          "rule": "spacing",
+          "line": 42,
+          "message": "missing blank line before if"
+        }
+      ],
+      "changed": true
+    }
+  ]
+}
+```
+
+### Agent
+
+Compact JSON designed for AI agents and CI pipelines. Groups output by changed files and violations rather than per-file results.
+
+```json
+{
+  "result": "fail",
+  "summary": { "files": 1, "changed": 1, "violations": 1 },
+  "changed": [
+    { "file": "engine.go", "steps": ["spacing"] }
+  ],
+  "violations": [
+    {
+      "file": "engine.go",
+      "rule": "spacing",
+      "line": 42,
+      "message": "missing blank line before if"
+    }
+  ]
+}
+```
+
+---
+
+## Exit Codes
+
+| Command | Code | Meaning |
+|---------|------|---------|
+| `fmt check` | `0` | No violations found — code is clean |
+| `fmt check` | `1` | Violations or errors detected |
+| `fmt format` | `0` | Formatting applied successfully |
+| `fmt format` | `1` | An error occurred during formatting |
+
+---
 
 ## Development
 
-Build:
+### Prerequisites
+
+- Go 1.24+
+- `goimports` (optional, for the import formatting step)
+
+### Make Targets
 
 ```bash
-make build
+make help            # list all targets and variables
+make build           # compile to ./builds/fmt
+make test            # run all tests with verbose output
+make test-race       # run tests with race detector
+make test-short      # run tests in short mode
+make vet             # run go vet
+make lint            # gofmt + test + vet
+make install         # go install the CLI
+make install-tools   # install goimports
+make config          # copy go-fmt.yml.example to go-fmt.yml
+make clean           # remove build artefacts and clean cache
 ```
 
-Test:
+### Make Variables
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `ARGS` | `.` | Files or directories to target |
+| `CONFIG` | _(empty)_ | Path to config file |
+| `OUTPUT` | `text` | Output format for check commands |
 
 ```bash
-make test
+# check a specific file
+make check ARGS=./internal/rules/spacing/spacing.go
+
+# use a specific config
+make check CONFIG=./go-fmt.yml
+
+# JSON output
+make check-json
+
+# agent output
+make check-agent
 ```
 
-Install `goimports` locally if you want the optional formatter step available during CLI runs:
-
-```bash
-make install-tools
-```
-
-Install the CLI locally:
-
-```bash
-make install
-```
+---
 
 ## Package Layout
 
-- `cmd/fmt`: CLI entrypoint
-- `internal/config`: YAML config loading through Viper
-- `internal/engine`: file collection, orchestration, reporting, formatter pipeline
-- `internal/rules`: rule contracts
-- `internal/rules/spacing`: first semantic style rule
+```
+cmd/fmt/                   CLI entrypoint and output rendering
+internal/config/           YAML config loading via Viper, with defaults
+internal/engine/           File collection, rule orchestration, formatter pipeline, reporting
+internal/rules/            Rule interface contract
+internal/rules/spacing/    Spacing semantic rule (AST-based)
+```
+
+### Formatting Pipeline
+
+The engine processes each file through a layered pipeline:
+
+```
+source file --> spacing rule --> gofmt --> goimports --> result
+```
+
+Each step only runs if enabled in the config. If a file is unchanged after all steps, it is reported as clean.
+
+---
 
 ## Notes
 
-- This project is not a Go port of an existing Laravel formatter.
-- The goal is to provide a Go-native style engine and fixer framework for automated code generation workflows.
-- `goimports` is optional at runtime. If it is not installed, the engine skips that step.
+- This is a Go-native project — not a port of an existing formatter from another ecosystem.
+- The rule system is designed to be extended. New rules implement the `Rule` interface (`Name()` + `Apply()`) and are registered in the engine.
+- `goimports` is optional. If the binary is not found at runtime, that step is skipped without error.

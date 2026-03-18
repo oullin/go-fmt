@@ -7,7 +7,7 @@ import (
 	"slices"
 	"strings"
 
-	"github.com/gocanto/go-cs-fixer/internal/config"
+	"github.com/oullin/go-fmt/internal/config"
 )
 
 func CollectGoFiles(paths []string, cfg config.Config) ([]string, error) {

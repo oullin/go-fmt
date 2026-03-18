@@ -12,7 +12,7 @@ GOIMPORTS := golang.org/x/tools/cmd/goimports@latest
 .PHONY: help run check format check-json check-agent config build test test-race test-short vet lint install install-tools clean
 
 help:
-	@echo "go-cs-fixer developer targets"
+	@echo "go-fmt developer targets"
 	@echo ""
 	@echo "Usage:"
 	@echo "  make run"
@@ -47,8 +47,8 @@ check-agent:
 	go run $(CMD) check $(if $(CONFIG),--config $(CONFIG),) --format agent $(ARGS)
 
 config:
-	cp -n go-cs-fixer.yml.example go-cs-fixer.yml || true
-	@echo "config ready at ./go-cs-fixer.yml"
+	cp -n go-fmt.yml.example go-fmt.yml || true
+	@echo "config ready at ./go-fmt.yml"
 
 build:
 	mkdir -p $(BUILD_DIR)

@@ -10,7 +10,7 @@ import (
 	"slices"
 	"strings"
 
-	"github.com/gocanto/go-cs-fixer/internal/rules"
+	"github.com/oullin/go-fmt/internal/rules"
 )
 
 type Rule struct{}
@@ -148,7 +148,7 @@ func statementGapRule(current ast.Stmt, next ast.Stmt) (string, bool) {
 
 func requiresTrailingBlankLine(current ast.Stmt, next ast.Stmt) bool {
 	switch current.(type) {
-	case *ast.IfStmt, *ast.ForStmt, *ast.RangeStmt, *ast.SwitchStmt, *ast.TypeSwitchStmt, *ast.SelectStmt, *ast.DeferStmt:
+	case *ast.IfStmt, *ast.ForStmt, *ast.RangeStmt, *ast.SwitchStmt, *ast.TypeSwitchStmt, *ast.SelectStmt, *ast.DeferStmt, *ast.BranchStmt:
 		return true
 	case *ast.DeclStmt:
 		if isTypeDeclStmt(current) {
@@ -165,7 +165,7 @@ func requiresTrailingBlankLine(current ast.Stmt, next ast.Stmt) bool {
 
 func requiresLeadingBlankLine(stmt ast.Stmt) bool {
 	switch stmt.(type) {
-	case *ast.IfStmt, *ast.ForStmt, *ast.RangeStmt, *ast.SwitchStmt, *ast.TypeSwitchStmt, *ast.SelectStmt, *ast.DeferStmt, *ast.ReturnStmt:
+	case *ast.IfStmt, *ast.ForStmt, *ast.RangeStmt, *ast.SwitchStmt, *ast.TypeSwitchStmt, *ast.SelectStmt, *ast.DeferStmt, *ast.ReturnStmt, *ast.BranchStmt:
 		return true
 	case *ast.DeclStmt:
 		return isTypeDeclStmt(stmt) || isVarDeclStmt(stmt)
@@ -175,7 +175,7 @@ func requiresLeadingBlankLine(stmt ast.Stmt) bool {
 }
 
 func statementLabel(stmt ast.Stmt) string {
-	switch stmt.(type) {
+	switch typed := stmt.(type) {
 	case *ast.IfStmt:
 		return "if statement"
 	case *ast.ForStmt:
@@ -192,6 +192,8 @@ func statementLabel(stmt ast.Stmt) string {
 		return "defer statement"
 	case *ast.ReturnStmt:
 		return "return statement"
+	case *ast.BranchStmt:
+		return fmt.Sprintf("%s statement", typed.Tok)
 	case *ast.DeclStmt:
 		if isTypeDeclStmt(stmt) {
 			return "type definition"

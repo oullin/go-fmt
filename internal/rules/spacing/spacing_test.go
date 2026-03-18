@@ -162,6 +162,46 @@ func run() {
 	}
 }
 
+func TestApplyFindsContinueSpacing(t *testing.T) {
+	path := writeTempGoFile(t, `package sample
+
+func run() {
+	for i := 0; i < 10; i++ {
+		println(i)
+		if i % 2 == 0 {
+			println("even")
+			continue
+		}
+		println("odd")
+	}
+}
+`)
+
+	violations, formatted, err := New().Apply(path, mustReadFile(t, path))
+
+	if err != nil {
+		t.Fatalf("apply: %v", err)
+	}
+
+	found := false
+
+	for _, v := range violations {
+		if strings.Contains(v.Message, "before continue") {
+			found = true
+
+			break
+		}
+	}
+
+	if !found {
+		t.Errorf("expected violation for 'before continue', got %d violations: %v", len(violations), violations)
+	}
+
+	if !strings.Contains(string(formatted), "\n\n\t\t\tcontinue") {
+		t.Errorf("expected blank line before continue in formatted output:\n%s", formatted)
+	}
+}
+
 func writeTempGoFile(t *testing.T, content string) string {
 	t.Helper()
 

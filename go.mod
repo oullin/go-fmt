@@ -1,4 +1,4 @@
-module github.com/gocanto/go-cs-fixer
+module github.com/oullin/go-fmt
 
 go 1.24.7
 

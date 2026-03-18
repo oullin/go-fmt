@@ -1,6 +1,6 @@
 package engine
 
-import "github.com/gocanto/go-cs-fixer/internal/rules"
+import "github.com/oullin/go-fmt/internal/rules"
 
 type FileResult struct {
 	File       string            `json:"file"`

@@ -10,8 +10,8 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/gocanto/go-cs-fixer/internal/config"
-	"github.com/gocanto/go-cs-fixer/internal/engine"
+	"github.com/oullin/go-fmt/internal/config"
+	"github.com/oullin/go-fmt/internal/engine"
 )
 
 type jsonReport struct {
@@ -104,7 +104,7 @@ func runCommand(mode string, args []string, stdout, stderr io.Writer) int {
 	fs := flag.NewFlagSet(mode, flag.ContinueOnError)
 	fs.SetOutput(stderr)
 
-	configPath := fs.String("config", "", "Path to go-cs-fixer YAML config")
+	configPath := fs.String("config", "", "Path to go-fmt YAML config")
 	outputFormat := fs.String("format", "text", "Output format: text, json, agent")
 
 	if err := fs.Parse(args); err != nil {
@@ -209,6 +209,7 @@ func renderText(w io.Writer, cwd, mode string, report engine.Report) {
 
 		if result.Error != "" {
 			fmt.Fprintf(w, "! %s %s\n", rel, result.Error)
+
 			continue
 		}
 
@@ -249,6 +250,7 @@ func toJSONReport(cwd string, report engine.Report) jsonReport {
 				File:    rel,
 				Message: result.Error,
 			})
+
 			continue
 		}
 

@@ -22,6 +22,7 @@ func generateDiff(old, new string) string {
 		if i < len(oldLines) && j < len(newLines) && oldLines[i] == newLines[j] {
 			i++
 			j++
+
 			continue
 		}
 

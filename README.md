@@ -1,6 +1,6 @@
-# go-cs-fixer
+# go-fmt
 
-`go-cs-fixer` is a Go coding styles and standards fixer for code produced by humans, agents, and other automations.
+`go-fmt` is a Go coding styles and standards fixer for code produced by humans, agents, and other automations.
 
 The repo exposes:
 
@@ -32,7 +32,7 @@ fmt format [paths...]
 Common flags:
 
 ```bash
-fmt check --config ./go-cs-fixer.yml --format text .
+fmt check --config ./go-fmt.yml --format text .
 fmt check --format json .
 fmt check --format agent .
 fmt format .
@@ -71,8 +71,8 @@ go run ./cmd/fmt format ./internal/rules/spacing/spacing.go
 Use the example config in this repo as a starting point:
 
 ```bash
-cp fixer.example go-cs-fixer.yml
-go run ./cmd/fmt check --config ./go-cs-fixer.yml .
+cp go-fmt.yml.example go-fmt.yml
+go run ./cmd/fmt check --config ./go-fmt.yml .
 ```
 
 Build the local binary and run it from `./builds/fmt`:
@@ -98,12 +98,12 @@ make check-agent
 Optional variables:
 
 - `ARGS`: files or directories to target, defaults to `.`
-- `CONFIG`: config path, for example `make check CONFIG=./go-cs-fixer.yml`
+- `CONFIG`: config path, for example `make check CONFIG=./go-fmt.yml`
 - `OUTPUT`: text output mode for `make check`, defaults to `text`
 
 ## Config
 
-The default config file is `go-cs-fixer.yml`.
+The default config file is `go-fmt.yml`.
 
 Example:
 

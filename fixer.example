@@ -1,0 +1,17 @@
+rules:
+  spacing:
+    enabled: true
+
+formatters:
+  gofmt: true
+  goimports: true
+
+exclude:
+  - .git
+  - vendor
+
+not_path:
+  - third_party/generated
+
+not_name:
+  - "*.pb.go"

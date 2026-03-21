@@ -2,30 +2,26 @@ package engine
 
 import (
 	"bytes"
-	"errors"
 	"fmt"
-	"go/format"
 	"os"
-	"os/exec"
 
 	"github.com/oullin/go-fmt/config"
+	"github.com/oullin/go-fmt/formatter"
 	"github.com/oullin/go-fmt/rules"
-	"github.com/oullin/go-fmt/rules/spacing"
 )
 
 type Engine struct {
-	cfg   config.Config
-	rules []rules.Rule
+	cfg        config.Config
+	rules      []rules.Rule
+	formatters []formatter.Formatter
 }
 
-func New(cfg config.Config) *Engine {
-	engine := &Engine{cfg: cfg}
-
-	if cfg.Rules.Spacing.Enabled {
-		engine.rules = append(engine.rules, spacing.New())
+func New(cfg config.Config, rr []rules.Rule, ff []formatter.Formatter) *Engine {
+	return &Engine{
+		cfg:        cfg,
+		rules:      rr,
+		formatters: ff,
 	}
-
-	return engine
 }
 
 func (e *Engine) Check(paths []string) (Report, error) {
@@ -96,33 +92,18 @@ func (e *Engine) processFile(path string, write bool) FileResult {
 		}
 	}
 
-	if e.cfg.Formatters.Gofmt {
-		formatted, err := format.Source(current)
+	for _, f := range e.formatters {
+		formatted, err := f.Format(current)
 
 		if err != nil {
-			result.Error = fmt.Sprintf("gofmt: %v", err)
+			result.Error = fmt.Sprintf("%s: %v", f.Name(), err)
 
 			return result
 		}
 
 		if !bytes.Equal(formatted, current) {
 			current = formatted
-			result.Applied = append(result.Applied, "gofmt")
-		}
-	}
-
-	if e.cfg.Formatters.Goimports {
-		formatted, changed, err := runGoimports(current)
-
-		if err != nil {
-			result.Error = fmt.Sprintf("goimports: %v", err)
-
-			return result
-		}
-
-		if changed {
-			current = formatted
-			result.Applied = append(result.Applied, "goimports")
+			result.Applied = append(result.Applied, f.Name())
 		}
 	}
 
@@ -143,42 +124,4 @@ func (e *Engine) processFile(path string, write bool) FileResult {
 	}
 
 	return result
-}
-
-func runGoimports(content []byte) ([]byte, bool, error) {
-	cmd := exec.Command("goimports")
-	cmd.Stdin = bytes.NewReader(content)
-
-	var out bytes.Buffer
-
-	var stderr bytes.Buffer
-
-	cmd.Stdout = &out
-	cmd.Stderr = &stderr
-
-	if err := cmd.Run(); err != nil {
-		if isCommandMissing(err) {
-			return content, false, nil
-		}
-
-		if stderr.Len() > 0 {
-			return nil, false, fmt.Errorf("%s", bytes.TrimSpace(stderr.Bytes()))
-		}
-
-		return nil, false, err
-	}
-
-	formatted := out.Bytes()
-
-	return formatted, !bytes.Equal(formatted, content), nil
-}
-
-func isCommandMissing(err error) bool {
-	var execErr *exec.Error
-
-	if errors.As(err, &execErr) {
-		return errors.Is(execErr.Err, exec.ErrNotFound)
-	}
-
-	return false
 }

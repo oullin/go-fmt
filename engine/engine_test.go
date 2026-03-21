@@ -1,4 +1,4 @@
-package engine
+package engine_test
 
 import (
 	"os"
@@ -7,7 +7,19 @@ import (
 	"testing"
 
 	"github.com/oullin/go-fmt/config"
+	"github.com/oullin/go-fmt/engine"
+	"github.com/oullin/go-fmt/formatter"
+	"github.com/oullin/go-fmt/rules"
+	"github.com/oullin/go-fmt/rules/spacing"
 )
+
+func defaultRules() []rules.Rule {
+	return []rules.Rule{spacing.New()}
+}
+
+func defaultFormatters() []formatter.Formatter {
+	return []formatter.Formatter{formatter.NewGofmt(), formatter.NewGoimports()}
+}
 
 func TestCollectGoFilesSkipsHiddenVendorAndGenerated(t *testing.T) {
 	root := t.TempDir()
@@ -17,7 +29,7 @@ func TestCollectGoFilesSkipsHiddenVendorAndGenerated(t *testing.T) {
 	mustWrite(t, filepath.Join(root, ".hidden", "skip.go"), "package sample\n")
 	mustWrite(t, filepath.Join(root, "generated.gen.go"), "package sample\n")
 
-	files, err := CollectGoFiles([]string{root}, config.Default())
+	files, err := engine.CollectGoFiles([]string{root}, config.Default())
 
 	if err != nil {
 		t.Fatalf("collect files: %v", err)
@@ -41,7 +53,7 @@ func run() {
 }
 `)
 
-	report, err := New(config.Default()).Check([]string{root})
+	report, err := engine.New(config.Default(), defaultRules(), defaultFormatters()).Check([]string{root})
 
 	if err != nil {
 		t.Fatalf("check: %v", err)
@@ -77,7 +89,7 @@ func run() {
 }
 `)
 
-	report, err := New(config.Default()).Format([]string{root})
+	report, err := engine.New(config.Default(), defaultRules(), defaultFormatters()).Format([]string{root})
 
 	if err != nil {
 		t.Fatalf("format: %v", err)

@@ -28,11 +28,6 @@ type jsonViolation struct {
 	Message string `json:"message"`
 }
 
-type jsonErrorMessage struct {
-	File    string `json:"file"`
-	Message string `json:"message"`
-}
-
 func RenderJSON(w io.Writer, cwd string, report engine.Report) error {
 	return json.NewEncoder(w).Encode(toJSONReport(cwd, report))
 }

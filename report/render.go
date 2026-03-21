@@ -8,6 +8,11 @@ import (
 	"github.com/oullin/go-fmt/engine"
 )
 
+type jsonErrorMessage struct {
+	File    string `json:"file"`
+	Message string `json:"message"`
+}
+
 func Render(w io.Writer, format, cwd, mode string, report engine.Report) error {
 	switch format {
 	case "text":

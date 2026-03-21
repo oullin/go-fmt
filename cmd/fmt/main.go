@@ -10,8 +10,8 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/oullin/go-fmt/internal/config"
-	"github.com/oullin/go-fmt/internal/engine"
+	"github.com/oullin/go-fmt/config"
+	"github.com/oullin/go-fmt/engine"
 )
 
 type jsonReport struct {

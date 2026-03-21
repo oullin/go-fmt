@@ -8,9 +8,9 @@ import (
 	"os"
 	"os/exec"
 
-	"github.com/oullin/go-fmt/internal/config"
-	"github.com/oullin/go-fmt/internal/rules"
-	"github.com/oullin/go-fmt/internal/rules/spacing"
+	"github.com/oullin/go-fmt/config"
+	"github.com/oullin/go-fmt/rules"
+	"github.com/oullin/go-fmt/rules/spacing"
 )
 
 type Engine struct {

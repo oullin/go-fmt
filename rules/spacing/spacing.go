@@ -10,7 +10,7 @@ import (
 	"slices"
 	"strings"
 
-	"github.com/oullin/go-fmt/internal/rules"
+	"github.com/oullin/go-fmt/rules"
 )
 
 type Rule struct{}

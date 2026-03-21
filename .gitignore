@@ -1,5 +1,6 @@
 /fmt
 /builds/fmt
+/dist/
 *.exe
 *.exe~
 *.dll

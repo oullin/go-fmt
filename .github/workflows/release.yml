@@ -27,26 +27,7 @@ jobs:
         run: go test ./... -race
 
       - name: Build binaries
-        run: |
-          VERSION="${GITHUB_REF_NAME}"
-          LDFLAGS="-X main.version=${VERSION}"
-          mkdir -p dist
-
-          platforms=(
-            "darwin/amd64"
-            "darwin/arm64"
-            "linux/amd64"
-            "linux/arm64"
-          )
-
-          for platform in "${platforms[@]}"; do
-            GOOS="${platform%/*}"
-            GOARCH="${platform#*/}"
-            output="dist/fmt-${GOOS}-${GOARCH}"
-
-            echo "Building ${GOOS}/${GOARCH}..."
-            GOOS="${GOOS}" GOARCH="${GOARCH}" go build -ldflags "${LDFLAGS}" -o "${output}" ./cmd/fmt
-          done
+        run: make release VERSION="${GITHUB_REF_NAME}"
 
       - name: Create checksums
         working-directory: dist

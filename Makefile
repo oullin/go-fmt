@@ -8,8 +8,10 @@ ARGS ?= .
 CONFIG ?=
 OUTPUT ?= text
 GOIMPORTS := golang.org/x/tools/cmd/goimports@latest
+DIST_DIR := dist
+VERSION ?= $(shell git describe --tags --always --dirty 2>/dev/null || echo dev)
 
-.PHONY: help run check format check-json check-agent config build test test-race test-short vet lint install install-tools clean
+.PHONY: help run check format check-json check-agent config build release test test-race test-short vet lint install install-tools clean
 
 help:
 	@echo "go-fmt developer targets"
@@ -24,6 +26,7 @@ help:
 	@echo "  make check-agent"
 	@echo "  make config"
 	@echo "  make build"
+	@echo "  make release"
 	@echo "  make test"
 	@echo ""
 	@echo "Variables:"
@@ -39,7 +42,6 @@ check:
 
 format:
 	go run $(CMD) format $(if $(CONFIG),--config $(CONFIG),) --format $(OUTPUT) $(ARGS)
-	go run $(CMD) check .
 
 check-json:
 	go run $(CMD) check $(if $(CONFIG),--config $(CONFIG),) --format json $(ARGS)
@@ -54,6 +56,16 @@ config:
 build:
 	mkdir -p $(BUILD_DIR)
 	go build -ldflags "-X main.version=$$(git describe --tags --always --dirty 2>/dev/null || echo dev)" -o $(BIN) $(CMD)
+
+release:
+	mkdir -p $(DIST_DIR)
+	@for platform in darwin/amd64 darwin/arm64 linux/amd64 linux/arm64; do \
+		GOOS=$${platform%/*}; \
+		GOARCH=$${platform#*/}; \
+		output="$(DIST_DIR)/$(APP)-$${GOOS}-$${GOARCH}"; \
+		echo "Building $${GOOS}/$${GOARCH}..."; \
+		GOOS=$${GOOS} GOARCH=$${GOARCH} go build -ldflags "-X main.version=$(VERSION)" -o "$${output}" $(CMD); \
+	done
 
 test:
 	go test ./... -v
@@ -80,4 +92,5 @@ install-tools:
 
 clean:
 	rm -f $(BIN)
+	rm -rf $(DIST_DIR)
 	go clean -cache

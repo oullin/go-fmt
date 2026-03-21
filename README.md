@@ -73,7 +73,7 @@ fmt check .
 fmt check --config ./go-fmt.yml --format json .
 
 # format a single file
-fmt format ./internal/rules/spacing/spacing.go
+fmt format ./rules/spacing/spacing.go
 
 # agent-friendly output for CI integrations
 fmt check --format agent .
@@ -254,7 +254,7 @@ If no paths are provided, the engine defaults to the current directory (`.`).
 Human-readable output with relative file paths, violation details, and a summary line.
 
 ```
-~ internal/engine/engine.go:42 [spacing] missing blank line before if
+~ engine/engine.go:42 [spacing] missing blank line before if
   would apply spacing
 Result: fail. 1 changed, 1 violation(s), 0 error(s).
 ```
@@ -353,7 +353,7 @@ make clean           # remove build artefacts and clean cache
 
 ```bash
 # check a specific file
-make check ARGS=./internal/rules/spacing/spacing.go
+make check ARGS=./rules/spacing/spacing.go
 
 # use a specific config
 make check CONFIG=./go-fmt.yml
@@ -371,10 +371,10 @@ make check-agent
 
 ```
 cmd/fmt/                   CLI entrypoint and output rendering
-internal/config/           YAML config loading via Viper, with defaults
-internal/engine/           File collection, rule orchestration, formatter pipeline, reporting
-internal/rules/            Rule interface contract
-internal/rules/spacing/    Spacing semantic rule (AST-based)
+config/                    YAML config loading via Viper, with defaults
+engine/                    File collection, rule orchestration, formatter pipeline, reporting
+rules/                     Rule interface contract
+rules/spacing/             Spacing semantic rule (AST-based)
 ```
 
 ### Formatting Pipeline

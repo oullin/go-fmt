@@ -6,7 +6,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/oullin/go-fmt/internal/config"
+	"github.com/oullin/go-fmt/config"
 )
 
 func TestCollectGoFilesSkipsHiddenVendorAndGenerated(t *testing.T) {

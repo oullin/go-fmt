@@ -18,8 +18,8 @@ help:
 	@echo "  make run"
 	@echo "  make check"
 	@echo "  make format"
-	@echo "  make check ARGS=./internal/rules/spacing/spacing.go"
-	@echo "  make format ARGS=./internal/rules/spacing/spacing.go"
+	@echo "  make check ARGS=./rules/spacing/spacing.go"
+	@echo "  make format ARGS=./rules/spacing/spacing.go"
 	@echo "  make check-json"
 	@echo "  make check-agent"
 	@echo "  make config"
@@ -39,6 +39,7 @@ check:
 
 format:
 	go run $(CMD) format $(if $(CONFIG),--config $(CONFIG),) --format $(OUTPUT) $(ARGS)
+	go run $(CMD) check .
 
 check-json:
 	go run $(CMD) check $(if $(CONFIG),--config $(CONFIG),) --format json $(ARGS)

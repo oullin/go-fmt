@@ -63,7 +63,17 @@ release:
 		GOOS=$${platform%/*}; \
 		GOARCH=$${platform#*/}; \
 		output="$(DIST_DIR)/$(APP)-$${GOOS}-$${GOARCH}"; \
-		echo "Building $${GOOS}/$${GOARCH}..."; \
+		case $${GOOS} in \
+			darwin) os_label="macOS" ;; \
+			linux)  os_label="Linux" ;; \
+			*)      os_label=$${GOOS} ;; \
+		esac; \
+		case $${GOARCH} in \
+			amd64) arch_label="Intel" ;; \
+			arm64) arch_label="Apple Silicon" ;; \
+			*)     arch_label=$${GOARCH} ;; \
+		esac; \
+		echo "Building $${os_label} $${arch_label} ($${GOOS}/$${GOARCH})..."; \
 		GOOS=$${GOOS} GOARCH=$${GOARCH} go build -ldflags "-X main.version=$(VERSION)" -o "$${output}" $(CMD); \
 	done
 

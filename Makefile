@@ -1,4 +1,4 @@
-SHELL := /bin/zsh
+SHELL := /bin/bash
 
 APP := fmt
 CMD := ./cmd/fmt

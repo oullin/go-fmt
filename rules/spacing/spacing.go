@@ -8,7 +8,6 @@ import (
 	"go/parser"
 	"go/token"
 	"slices"
-	"strings"
 
 	"github.com/oullin/go-fmt/rules"
 )
@@ -390,12 +389,4 @@ func applyInsertions(src []byte, insertions map[int]struct{}) []byte {
 	out.Write(src[last:])
 
 	return out.Bytes()
-}
-
-func RelativeMessage(path string, violation rules.Violation) string {
-	if violation.Line > 0 {
-		return fmt.Sprintf("%s:%d %s", path, violation.Line, violation.Message)
-	}
-
-	return fmt.Sprintf("%s %s", path, strings.TrimSpace(violation.Message))
 }

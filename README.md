@@ -34,8 +34,14 @@ go install github.com/oullin/go-fmt/cmd/fmt@latest
 
 ```bash
 make build
-./builds/fmt check .
-./builds/fmt format .
+./bin/fmt check .
+./bin/fmt format .
+```
+
+On macOS, older unsigned release binaries may be quarantined by Gatekeeper. If a downloaded binary exits immediately with `killed`, clear the quarantine attribute before running it:
+
+```bash
+xattr -d com.apple.quarantine ./fmt
 ```
 
 **Run directly without installing:**
@@ -331,7 +337,8 @@ Compact JSON designed for AI agents and CI pipelines. Groups output by changed f
 
 ```bash
 make help            # list all targets and variables
-make build           # compile to ./builds/fmt
+make build           # compile a host-native binary to ./bin/fmt
+make release         # build release binaries to ./dist
 make test            # run all tests with verbose output
 make test-race       # run tests with race detector
 make test-short      # run tests in short mode
@@ -364,6 +371,20 @@ make check-json
 # agent output
 make check-agent
 ```
+
+### Release Signing
+
+Browser-downloaded macOS binaries need Apple Developer ID signing and notarization to pass Gatekeeper cleanly. The release workflow expects these GitHub Actions secrets:
+
+- `APPLE_KEYCHAIN_PASSWORD`
+- `APPLE_CERTIFICATE_P12_BASE64`
+- `APPLE_CERTIFICATE_PASSWORD`
+- `APPLE_SIGNING_IDENTITY`
+- `APPLE_ID`
+- `APPLE_APP_SPECIFIC_PASSWORD`
+- `APPLE_TEAM_ID`
+
+The workflow signs `dist/fmt-macos-apple-silicon`, notarizes a ZIP containing that binary, and then publishes the matching raw binary asset alongside `dist/fmt-linux-x86_64`. Apple does not support stapling tickets to standalone binaries, so the macOS binary relies on Gatekeeper’s online ticket lookup at first launch.
 
 ---
 

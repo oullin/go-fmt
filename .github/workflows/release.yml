@@ -10,7 +10,17 @@ permissions:
 
 jobs:
   release:
-    runs-on: ubuntu-latest
+    runs-on: macos-latest
+    env:
+      APPLE_CERTIFICATE_PATH: ${{ runner.temp }}/developer-id-application.p12
+      APPLE_KEYCHAIN_PATH: ${{ runner.temp }}/app-signing.keychain-db
+      APPLE_KEYCHAIN_PASSWORD: ${{ secrets.APPLE_KEYCHAIN_PASSWORD }}
+      APPLE_CERTIFICATE_P12_BASE64: ${{ secrets.APPLE_CERTIFICATE_P12_BASE64 }}
+      APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
+      APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
+      APPLE_ID: ${{ secrets.APPLE_ID }}
+      APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
+      APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
 
     steps:
       - uses: actions/checkout@v4
@@ -34,12 +44,64 @@ jobs:
       - name: Run tests
         run: go test ./... -race
 
+      - name: Validate macOS signing secrets
+        run: |
+          for var in \
+            APPLE_KEYCHAIN_PASSWORD \
+            APPLE_CERTIFICATE_P12_BASE64 \
+            APPLE_CERTIFICATE_PASSWORD \
+            APPLE_SIGNING_IDENTITY \
+            APPLE_ID \
+            APPLE_APP_SPECIFIC_PASSWORD \
+            APPLE_TEAM_ID
+          do
+            if [ -z "${!var}" ]; then
+              echo "Missing required secret: $var" >&2
+              exit 1
+            fi
+          done
+
+      - name: Install Apple signing certificate
+        run: |
+          echo "$APPLE_CERTIFICATE_P12_BASE64" | base64 -D > "$APPLE_CERTIFICATE_PATH"
+          security create-keychain -p "$APPLE_KEYCHAIN_PASSWORD" "$APPLE_KEYCHAIN_PATH"
+          security set-keychain-settings -lut 21600 "$APPLE_KEYCHAIN_PATH"
+          security unlock-keychain -p "$APPLE_KEYCHAIN_PASSWORD" "$APPLE_KEYCHAIN_PATH"
+          security import "$APPLE_CERTIFICATE_PATH" \
+            -P "$APPLE_CERTIFICATE_PASSWORD" \
+            -A \
+            -t cert \
+            -f pkcs12 \
+            -k "$APPLE_KEYCHAIN_PATH"
+          security set-key-partition-list \
+            -S apple-tool:,apple:,codesign: \
+            -s \
+            -k "$APPLE_KEYCHAIN_PASSWORD" \
+            "$APPLE_KEYCHAIN_PATH"
+          security list-keychains -d user -s "$APPLE_KEYCHAIN_PATH"
+
       - name: Build binaries
         run: make release VERSION="${{ steps.version.outputs.new_tag }}"
 
-      - name: Create checksums
-        working-directory: dist
-        run: sha256sum fmt-* > checksums.txt
+      - name: Sign macOS binary
+        run: |
+          codesign \
+            --force \
+            --options runtime \
+            --timestamp \
+            --sign "$APPLE_SIGNING_IDENTITY" \
+            dist/fmt-macos-apple-silicon
+          codesign --verify --verbose=4 dist/fmt-macos-apple-silicon
+
+      - name: Notarize macOS binary
+        run: |
+          ditto -c -k --keepParent dist/fmt-macos-apple-silicon dist/fmt-macos-apple-silicon.zip
+          xcrun notarytool submit dist/fmt-macos-apple-silicon.zip \
+            --apple-id "$APPLE_ID" \
+            --password "$APPLE_APP_SPECIFIC_PASSWORD" \
+            --team-id "$APPLE_TEAM_ID" \
+            --wait
+          spctl --assess --type execute --verbose=4 dist/fmt-macos-apple-silicon
 
       - name: Create release
         uses: softprops/action-gh-release@v2
@@ -49,4 +111,3 @@ jobs:
           generate_release_notes: true
           files: |
             dist/fmt-*
-            dist/checksums.txt

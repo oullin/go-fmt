@@ -2,7 +2,7 @@ SHELL := /bin/bash
 
 APP := fmt
 CMD := ./cmd/fmt
-BUILD_DIR := builds
+BUILD_DIR := bin
 BIN := $(BUILD_DIR)/$(APP)
 ARGS ?= .
 CONFIG ?=
@@ -10,6 +10,14 @@ OUTPUT ?= text
 GOIMPORTS := golang.org/x/tools/cmd/goimports@latest
 DIST_DIR := dist
 VERSION ?= $(shell git describe --tags --always --dirty 2>/dev/null || echo dev)
+CGO_ENABLED ?= 0
+HOST_OS := $(shell uname -s | tr '[:upper:]' '[:lower:]')
+HOST_ARCH := $(shell case "$$(uname -m)" in \
+	x86_64|amd64) echo amd64 ;; \
+	arm64|aarch64) echo arm64 ;; \
+	*) echo "$$(uname -m)" ;; \
+esac)
+RELEASE_PLATFORMS := darwin/arm64 linux/amd64
 
 .PHONY: help run check format check-json check-agent config build release test test-race test-short vet lint install install-tools clean
 
@@ -55,26 +63,26 @@ config:
 
 build:
 	mkdir -p $(BUILD_DIR)
-	go build -ldflags "-X main.version=$$(git describe --tags --always --dirty 2>/dev/null || echo dev)" -o $(BIN) $(CMD)
+	CGO_ENABLED=$(CGO_ENABLED) GOOS=$(HOST_OS) GOARCH=$(HOST_ARCH) go build -ldflags "-X main.version=$$(git describe --tags --always --dirty 2>/dev/null || echo dev)" -o $(BIN) $(CMD)
 
 release:
 	mkdir -p $(DIST_DIR)
-	@for platform in darwin/amd64 darwin/arm64 linux/amd64 linux/arm64; do \
+	@for platform in $(RELEASE_PLATFORMS); do \
 		GOOS=$${platform%/*}; \
 		GOARCH=$${platform#*/}; \
-		output="$(DIST_DIR)/$(APP)-$${GOOS}-$${GOARCH}"; \
 		case $${GOOS} in \
-			darwin) os_label="macOS" ;; \
-			linux)  os_label="Linux" ;; \
-			*)      os_label=$${GOOS} ;; \
+			darwin) os_label="macOS"; os_slug="macos" ;; \
+			linux)  os_label="Linux"; os_slug="linux" ;; \
+			*)      os_label=$${GOOS}; os_slug=$${GOOS} ;; \
 		esac; \
 		case $${GOARCH} in \
-			amd64) arch_label="Intel" ;; \
-			arm64) arch_label="Apple Silicon" ;; \
-			*)     arch_label=$${GOARCH} ;; \
+			amd64) arch_label="x86_64"; arch_slug="x86_64" ;; \
+			arm64) arch_label="Apple Silicon"; arch_slug="apple-silicon" ;; \
+			*)     arch_label=$${GOARCH}; arch_slug=$${GOARCH} ;; \
 		esac; \
+		output="$(DIST_DIR)/$(APP)-$${os_slug}-$${arch_slug}"; \
 		echo "Building $${os_label} $${arch_label} ($${GOOS}/$${GOARCH})..."; \
-		GOOS=$${GOOS} GOARCH=$${GOARCH} go build -ldflags "-X main.version=$(VERSION)" -o "$${output}" $(CMD); \
+		CGO_ENABLED=$(CGO_ENABLED) GOOS=$${GOOS} GOARCH=$${GOARCH} go build -ldflags "-X main.version=$(VERSION)" -o "$${output}" $(CMD); \
 	done
 
 test:

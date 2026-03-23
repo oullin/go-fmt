@@ -38,10 +38,16 @@ make build
 ./bin/fmt format .
 ```
 
-On macOS, older unsigned release binaries may be quarantined by Gatekeeper. If a downloaded binary exits immediately with `killed`, clear the quarantine attribute before running it:
+If you downloaded a standalone binary from an older release, make sure it is executable before running it:
 
 ```bash
-xattr -d com.apple.quarantine ./fmt
+chmod +x /path/to/fmt
+```
+
+On macOS, older unsigned release binaries may be quarantined by Gatekeeper. If the binary exits immediately with `killed`, clear the quarantine attribute on that binary before running it:
+
+```bash
+xattr -d com.apple.quarantine /path/to/fmt
 ```
 
 **Run directly without installing:**
@@ -384,7 +390,7 @@ Browser-downloaded macOS binaries need Apple Developer ID signing and notarizati
 - `APPLE_APP_SPECIFIC_PASSWORD`
 - `APPLE_TEAM_ID`
 
-The workflow signs `dist/fmt-macos-apple-silicon`, notarizes a ZIP containing that binary, and then publishes the matching raw binary asset alongside `dist/fmt-linux-x86_64`. Apple does not support stapling tickets to standalone binaries, so the macOS binary relies on Gatekeeper’s online ticket lookup at first launch.
+The workflow signs `dist/fmt-darwin-arm64`, notarizes a ZIP containing that binary, packages the Linux build as `dist/fmt-linux-amd64.tar.gz`, and publishes those archives as the release assets so executable permissions are preserved on download. Apple does not support stapling tickets to standalone binaries, so the macOS binary inside the ZIP relies on Gatekeeper’s online ticket lookup at first launch.
 
 ---
 

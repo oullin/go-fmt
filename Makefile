@@ -12,11 +12,7 @@ DIST_DIR := dist
 VERSION ?= $(shell git describe --tags --always --dirty 2>/dev/null || echo dev)
 CGO_ENABLED ?= 0
 HOST_OS := $(shell uname -s | tr '[:upper:]' '[:lower:]')
-HOST_ARCH := $(shell case "$$(uname -m)" in \
-	x86_64|amd64) echo amd64 ;; \
-	arm64|aarch64) echo arm64 ;; \
-	*) echo "$$(uname -m)" ;; \
-esac)
+HOST_ARCH := $(shell arch="$$(uname -m)"; if [ "$$arch" = "x86_64" ] || [ "$$arch" = "amd64" ]; then echo amd64; elif [ "$$arch" = "arm64" ] || [ "$$arch" = "aarch64" ]; then echo arm64; else echo "$$arch"; fi)
 RELEASE_PLATFORMS := darwin/arm64 linux/amd64
 
 .PHONY: help run check format check-json check-agent config build release test test-race test-short vet lint install install-tools clean
@@ -63,7 +59,8 @@ config:
 
 build:
 	mkdir -p $(BUILD_DIR)
-	CGO_ENABLED=$(CGO_ENABLED) GOOS=$(HOST_OS) GOARCH=$(HOST_ARCH) go build -ldflags "-X main.version=$$(git describe --tags --always --dirty 2>/dev/null || echo dev)" -o $(BIN) $(CMD)
+	CGO_ENABLED=$(CGO_ENABLED) GOOS=$(HOST_OS) GOARCH=$(HOST_ARCH) go build -ldflags "-X main.version=$(VERSION)" -o $(BIN) $(CMD)
+	chmod +x $(BIN)
 
 release:
 	mkdir -p $(DIST_DIR)
@@ -71,18 +68,19 @@ release:
 		GOOS=$${platform%/*}; \
 		GOARCH=$${platform#*/}; \
 		case $${GOOS} in \
-			darwin) os_label="macOS"; os_slug="macos" ;; \
-			linux)  os_label="Linux"; os_slug="linux" ;; \
-			*)      os_label=$${GOOS}; os_slug=$${GOOS} ;; \
+			darwin) os_label="macOS" ;; \
+			linux)  os_label="Linux" ;; \
+			*)      os_label=$${GOOS} ;; \
 		esac; \
 		case $${GOARCH} in \
-			amd64) arch_label="x86_64"; arch_slug="x86_64" ;; \
-			arm64) arch_label="Apple Silicon"; arch_slug="apple-silicon" ;; \
-			*)     arch_label=$${GOARCH}; arch_slug=$${GOARCH} ;; \
+			amd64) arch_label="x86_64" ;; \
+			arm64) arch_label="Apple Silicon" ;; \
+			*)     arch_label=$${GOARCH} ;; \
 		esac; \
-		output="$(DIST_DIR)/$(APP)-$${os_slug}-$${arch_slug}"; \
+		output="$(DIST_DIR)/$(APP)-$${GOOS}-$${GOARCH}"; \
 		echo "Building $${os_label} $${arch_label} ($${GOOS}/$${GOARCH})..."; \
 		CGO_ENABLED=$(CGO_ENABLED) GOOS=$${GOOS} GOARCH=$${GOARCH} go build -ldflags "-X main.version=$(VERSION)" -o "$${output}" $(CMD); \
+		chmod +x "$${output}"; \
 	done
 
 test:

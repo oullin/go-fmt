@@ -90,18 +90,22 @@ jobs:
             --options runtime \
             --timestamp \
             --sign "$APPLE_SIGNING_IDENTITY" \
-            dist/fmt-macos-apple-silicon
-          codesign --verify --verbose=4 dist/fmt-macos-apple-silicon
+            dist/fmt-darwin-arm64
+          codesign --verify --verbose=4 dist/fmt-darwin-arm64
 
       - name: Notarize macOS binary
         run: |
-          ditto -c -k --keepParent dist/fmt-macos-apple-silicon dist/fmt-macos-apple-silicon.zip
-          xcrun notarytool submit dist/fmt-macos-apple-silicon.zip \
+          ditto -c -k --keepParent dist/fmt-darwin-arm64 dist/fmt-darwin-arm64.zip
+          xcrun notarytool submit dist/fmt-darwin-arm64.zip \
             --apple-id "$APPLE_ID" \
             --password "$APPLE_APP_SPECIFIC_PASSWORD" \
             --team-id "$APPLE_TEAM_ID" \
             --wait
-          spctl --assess --type execute --verbose=4 dist/fmt-macos-apple-silicon
+          spctl --assess --type execute --verbose=4 dist/fmt-darwin-arm64
+
+      - name: Package Linux binary
+        run: |
+          tar -czf dist/fmt-linux-amd64.tar.gz -C dist fmt-linux-amd64
 
       - name: Create release
         uses: softprops/action-gh-release@v2
@@ -110,4 +114,5 @@ jobs:
           prerelease: false
           generate_release_notes: true
           files: |
-            dist/fmt-*
+            dist/fmt-darwin-arm64.zip
+            dist/fmt-linux-amd64.tar.gz

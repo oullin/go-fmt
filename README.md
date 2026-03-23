@@ -65,7 +65,7 @@ The binary is called `fmt` and has two commands: **check** and **format**.
 
 ```
 fmt check  [paths...]   # report violations without writing changes
-fmt format [paths...]   # fix violations and write changes to disc
+fmt format [paths...]   # fix violations and write changes to disk
 ```
 
 Both commands accept these flags:

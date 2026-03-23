@@ -23,10 +23,10 @@ func (Rule) Name() string {
 }
 
 func (r Rule) Apply(path string, src []byte) ([]rules.Violation, []byte, error) {
-	return analyze(path, src)
+	return analyse(path, src)
 }
 
-func analyze(filename string, src []byte) ([]rules.Violation, []byte, error) {
+func analyse(filename string, src []byte) ([]rules.Violation, []byte, error) {
 	fset := token.NewFileSet()
 	file, err := parser.ParseFile(fset, filename, src, parser.ParseComments)
 

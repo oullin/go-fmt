@@ -1,0 +1,13 @@
+{
+  "name": "tooling",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "check": "node ./scripts/oxfmt.mjs check",
+    "format": "node ./scripts/oxfmt.mjs format",
+    "test": "node --test ./test/*.test.mjs"
+  },
+  "devDependencies": {
+    "oxfmt": "0.41.0"
+  }
+}

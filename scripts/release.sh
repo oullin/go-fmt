@@ -2,6 +2,7 @@
 set -euo pipefail
 
 app="${APP:-fmt}"
+go_workdir="${GO_WORKDIR:-semantic}"
 cmd="${CMD:-./cmd/fmt}"
 dist_dir="${DIST_DIR:-dist}"
 version="${VERSION:-dev}"
@@ -41,7 +42,7 @@ for platform in $release_platforms; do
 	printf 'Building %s %s (%s/%s)...\n' "$(os_label "$goos")" "$(arch_label "$goos" "$goarch")" "$goos" "$goarch"
 
 	CGO_ENABLED="$cgo_enabled" GOOS="$goos" GOARCH="$goarch" \
-		go build -ldflags "-X main.version=$version" -o "$output" "$cmd"
+		go -C "$go_workdir" build -ldflags "-X main.version=$version" -o "../$output" "$cmd"
 
 	chmod +x "$output"
 done

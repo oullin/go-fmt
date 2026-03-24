@@ -10,7 +10,12 @@
 *.out
 .gopath/
 .gocache/
+.turbo/
+node_modules/
+tooling/node_modules/
+semantic/node_modules/
 dist-test/
+storage/
 
 # IDE
 .idea/

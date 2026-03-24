@@ -1,11 +1,6 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-if [[ "${1:-}" == "source" ]]; then
-	gofmt -w .
-	exit 0
-fi
-
 output="${1:-text}"
 config="${2:-}"
 shift 2 || true
@@ -15,7 +10,7 @@ if [[ ${#args[@]} -eq 0 ]]; then
 	args=(.)
 fi
 
-cmd=(go run ./cmd/fmt format --format "$output")
+cmd=(node ./tooling/scripts/orchestrate.mjs format --output "$output")
 if [[ -n "$config" ]]; then
 	cmd+=(--config "$config")
 fi

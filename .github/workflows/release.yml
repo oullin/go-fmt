@@ -22,7 +22,18 @@ jobs:
 
       - uses: actions/setup-go@v5
         with:
-          go-version-file: go.mod
+          go-version-file: semantic/go.mod
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 25
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.32.1
+
+      - name: Install workspace dependencies
+        run: pnpm install --frozen-lockfile
 
       - name: Bump version and create tag
         id: version
@@ -34,8 +45,11 @@ jobs:
           tag_prefix: v
           initial_version: 0.1.0
 
+      - name: Run checks
+        run: make check
+
       - name: Run tests
-        run: go test ./... -race
+        run: make test-race
 
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v3

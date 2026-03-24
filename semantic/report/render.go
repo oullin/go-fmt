@@ -5,7 +5,7 @@ import (
 	"io"
 	"path/filepath"
 
-	"github.com/oullin/go-fmt/engine"
+	"github.com/oullin/go-fmt/semantic/engine"
 )
 
 type jsonErrorMessage struct {

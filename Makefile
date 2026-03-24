@@ -3,6 +3,7 @@ SHELL := /bin/bash
 
 APP := fmt
 CMD := ./cmd/fmt
+GO_WORKDIR := semantic
 BUILD_DIR := bin
 BIN := $(BUILD_DIR)/$(APP)
 
@@ -14,8 +15,8 @@ CGO_ENABLED ?= 0 ## CGO setting used for build and release
 DIST_DIR ?= dist ## Directory for release binaries
 RELEASE_PLATFORMS ?= darwin/amd64 darwin/arm64 linux/amd64 linux/arm64 ## Space-separated GOOS/GOARCH release targets
 
-HOST_OS := $(shell go env GOOS)
-HOST_ARCH := $(shell go env GOARCH)
+HOST_OS := $(shell go -C $(GO_WORKDIR) env GOOS)
+HOST_ARCH := $(shell go -C $(GO_WORKDIR) env GOARCH)
 
 .PHONY: help check format check-json check-agent config build release test test-race test-short vet fmt-source install clean
 
@@ -51,7 +52,7 @@ help: ## Show available targets and override variables
 		} \
 	' $(MAKEFILE_LIST)
 	@printf "\nExamples:\n"
-	@printf "  make check ARGS=./rules/spacing/spacing.go\n"
+	@printf "  make check ARGS=./semantic/rules/spacing/spacing.go\n"
 	@printf "  make check CONFIG=./go-fmt.yml\n"
 	@printf "  make check-json\n"
 	@printf "  make fmt-source\n"
@@ -72,30 +73,31 @@ config: ## Create ./go-fmt.yml if it does not exist
 	@./scripts/config.sh
 
 build: ## Build a host-native binary into ./bin
-	@APP='$(APP)' CMD='$(CMD)' BUILD_DIR='$(BUILD_DIR)' BIN='$(BIN)' VERSION='$(strip $(VERSION))' CGO_ENABLED='$(strip $(CGO_ENABLED))' HOST_OS='$(HOST_OS)' HOST_ARCH='$(HOST_ARCH)' ./scripts/build.sh
+	@APP='$(APP)' GO_WORKDIR='$(GO_WORKDIR)' CMD='$(CMD)' BUILD_DIR='$(BUILD_DIR)' BIN='$(BIN)' VERSION='$(strip $(VERSION))' CGO_ENABLED='$(strip $(CGO_ENABLED))' HOST_OS='$(HOST_OS)' HOST_ARCH='$(HOST_ARCH)' ./scripts/build.sh
 
 release: ## Build release binaries into $(DIST_DIR)
-	@APP='$(APP)' CMD='$(CMD)' DIST_DIR='$(strip $(DIST_DIR))' VERSION='$(strip $(VERSION))' CGO_ENABLED='$(strip $(CGO_ENABLED))' RELEASE_PLATFORMS='$(strip $(RELEASE_PLATFORMS))' ./scripts/release.sh
+	@APP='$(APP)' GO_WORKDIR='$(GO_WORKDIR)' CMD='$(CMD)' DIST_DIR='$(strip $(DIST_DIR))' VERSION='$(strip $(VERSION))' CGO_ENABLED='$(strip $(CGO_ENABLED))' RELEASE_PLATFORMS='$(strip $(RELEASE_PLATFORMS))' ./scripts/release.sh
 
 test: ## Run all tests with verbose output
-	go test ./... -v
+	pnpm test
 
 test-race: ## Run all tests with the race detector
-	go test ./... -race -v
+	go -C $(GO_WORKDIR) test ./... -race -v
 
 test-short: ## Run tests in short mode
-	go test ./... -short
+	go -C $(GO_WORKDIR) test ./... -short
 
 vet: ## Run go vet across the module
-	go vet ./...
+	pnpm vet
 
 fmt-source: ## Rewrite Go source formatting in the repository
-	@./scripts/format.sh source
+	@./scripts/fmt-source.sh
 
 install: ## Install the CLI with go install
-	go install $(CMD)
+	go -C $(GO_WORKDIR) install $(CMD)
 
 clean: ## Remove build artifacts and clean the Go cache
 	rm -f $(BIN)
 	rm -rf $(DIST_DIR)
-	go clean -cache
+	rm -rf .turbo node_modules tooling/node_modules semantic/node_modules
+	go -C $(GO_WORKDIR) clean -cache

@@ -9,7 +9,7 @@ import (
 	"go/token"
 	"slices"
 
-	"github.com/oullin/go-fmt/rules"
+	"github.com/oullin/go-fmt/semantic/rules"
 )
 
 type Rule struct{}

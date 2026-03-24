@@ -1,6 +1,6 @@
 package engine
 
-import "github.com/oullin/go-fmt/rules"
+import "github.com/oullin/go-fmt/semantic/rules"
 
 type FileResult struct {
 	File       string            `json:"file"`

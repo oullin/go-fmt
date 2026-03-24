@@ -10,7 +10,7 @@ if [[ ${#args[@]} -eq 0 ]]; then
 	args=(.)
 fi
 
-cmd=(go run ./cmd/fmt check --format "$output")
+cmd=(node ./tooling/scripts/orchestrate.mjs check --output "$output")
 if [[ -n "$config" ]]; then
 	cmd+=(--config "$config")
 fi

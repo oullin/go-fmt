@@ -6,13 +6,13 @@ ARG VERSION=dev
 
 WORKDIR /src
 
-COPY go.mod go.sum ./
-RUN go mod download
+COPY semantic/go.mod semantic/go.sum /src/semantic/
+RUN go -C /src/semantic mod download
 
 COPY . .
 
 RUN CGO_ENABLED=0 GOOS=${TARGETOS} GOARCH=${TARGETARCH} \
-	go build -trimpath -ldflags="-s -w -X main.version=${VERSION}" -o /out/fmt ./cmd/fmt
+	go -C /src/semantic build -trimpath -ldflags="-s -w -X main.version=${VERSION}" -o /out/fmt ./cmd/fmt
 
 FROM golang:1.25-alpine
 

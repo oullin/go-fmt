@@ -10,7 +10,9 @@ The project ships as a **reusable engine** and a **standalone CLI** (`fmt`). Rul
 
 ## Table of Contents
 
+- [Highlights](#highlights)
 - [Quick Start](#quick-start)
+- [Installation](#installation)
 - [CLI](#cli)
 - [Configuration](#configuration)
 - [Spacing Rule](#spacing-rule)
@@ -22,36 +24,40 @@ The project ships as a **reusable engine** and a **standalone CLI** (`fmt`). Rul
 
 ---
 
+## Highlights
+
+- Adds semantic formatting on top of `gofmt`, not just whitespace normalization
+- Runs as either a local CLI, a Docker image, or directly from source
+- Supports human-readable, JSON, and agent-oriented output
+- Applies rule fixes first, then standard Go formatters for predictable results
+- Can be embedded as a reusable engine in Go code
+
+---
+
 ## Quick Start
 
-**Run with Docker:**
+If you already have Go installed, the fastest way to try `go-fmt` is:
+
+```bash
+go install github.com/oullin/go-fmt/cmd/fmt@latest
+fmt check .
+fmt format .
+```
+
+If you prefer not to install a local binary, run it with Docker:
 
 ```bash
 docker run --rm -u "$(id -u):$(id -g)" -v "$PWD":/work -w /work ghcr.io/oullin/go-fmt:latest check .
 docker run --rm -u "$(id -u):$(id -g)" -v "$PWD":/work -w /work ghcr.io/oullin/go-fmt:latest format .
 ```
 
-On macOS, this runs as a Linux container via Docker Desktop rather than as a native trusted macOS binary.
-
-**Or install from source with Go:**
-
-Requires Go 1.25 or newer in your local environment.
+If you want a project-local config, copy the example file first:
 
 ```bash
-go install github.com/oullin/go-fmt/cmd/fmt@latest
+cp go-fmt.yml.example go-fmt.yml
 ```
 
-**Or build from source locally:**
-
-Local builds and tests require Go 1.25 or newer.
-
-```bash
-make build
-./bin/fmt check .
-./bin/fmt format .
-```
-
-**Run directly without installing:**
+To run from the repo without installing anything:
 
 ```bash
 go run ./cmd/fmt check .
@@ -60,23 +66,84 @@ go run ./cmd/fmt format .
 
 ---
 
+## Installation
+
+`go-fmt` can be used as a local binary, a source build, or a container.
+
+| Method | Best for | Command |
+|--------|----------|---------|
+| `go install` | regular local CLI usage | `go install github.com/oullin/go-fmt/cmd/fmt@latest` |
+| `make build` | working from the repo | `make build` |
+| Docker | no local binary install | `docker run ... ghcr.io/oullin/go-fmt:latest` |
+
+### Option 1: Install with Go
+
+Requires Go 1.25 or newer.
+
+```bash
+go install github.com/oullin/go-fmt/cmd/fmt@latest
+```
+
+Make sure your Go bin directory is on `PATH` so the `fmt` binary is available in your shell:
+
+```bash
+export PATH="$(go env GOPATH)/bin:$PATH"
+```
+
+Verify the installation:
+
+```bash
+fmt version
+```
+
+### Option 2: Build Locally
+
+Build a host-native binary into `./bin/fmt` from this repository:
+
+```bash
+make build
+./bin/fmt version
+```
+
+To install from the local source tree into your Go bin directory:
+
+```bash
+make install
+fmt version
+```
+
+### Option 3: Use Docker
+
+If you do not want to install the binary locally, run the published container image directly:
+
+```bash
+docker run --rm -u "$(id -u):$(id -g)" -v "$PWD":/work -w /work ghcr.io/oullin/go-fmt:latest check .
+docker run --rm -u "$(id -u):$(id -g)" -v "$PWD":/work -w /work ghcr.io/oullin/go-fmt:latest format .
+```
+
+On macOS, this runs as a Linux container via Docker Desktop rather than as a native trusted macOS binary.
+
+---
+
 ## CLI
 
-The binary is called `fmt` and has two commands: **check** and **format**.
+The binary is called `fmt` and exposes two primary commands.
 
-```
-fmt check  [paths...]   # report violations without writing changes
-fmt format [paths...]   # fix violations and write changes to disk
-```
+| Command | Purpose |
+|---------|---------|
+| `fmt check [paths...]` | report violations without writing changes |
+| `fmt format [paths...]` | fix violations and write changes to disk |
 
-Both commands accept these flags:
+If no paths are provided, both commands default to the current directory (`.`).
+
+Both commands accept the same flags:
 
 | Flag | Description | Default |
 |------|-------------|---------|
 | `--config` | Path to a `go-fmt.yml` config file | auto-detected in working directory |
 | `--format` | Output format: `text`, `json`, or `agent` | `text` |
 
-### Examples
+### Common Workflows
 
 ```bash
 # check everything in the current directory
@@ -98,10 +165,22 @@ fmt check --format agent .
 
 `go-fmt` looks for a `go-fmt.yml` file in the working directory. If none is found, built-in defaults apply. You can also point to a config explicitly with `--config`.
 
-**Copy the example config to get started:**
+Start from the example config:
 
 ```bash
 cp go-fmt.yml.example go-fmt.yml
+```
+
+Minimal config:
+
+```yaml
+rules:
+  spacing:
+    enabled: true
+
+formatters:
+  gofmt: true
+  goimports: true
 ```
 
 ### Full Config Reference
@@ -274,7 +353,7 @@ Result: fail. 1 changed, 1 violation(s), 0 error(s).
 
 ### JSON
 
-Structured output with full details for each file. Useful for editors, dashboards, and tooling.
+Structured output with full details for each file. Useful for editors, dashboards, and scripts.
 
 ```json
 {
@@ -300,7 +379,7 @@ Structured output with full details for each file. Useful for editors, dashboard
 
 ### Agent
 
-Compact JSON designed for AI agents and CI pipelines. Groups output by changed files and violations rather than per-file results.
+Compact JSON designed for AI agents and CI pipelines. It groups changed files and violations rather than mirroring every per-file report field.
 
 ```json
 {
@@ -340,6 +419,8 @@ Compact JSON designed for AI agents and CI pipelines. Groups output by changed f
 - Go 1.25 or newer
 - `goimports` (optional, for the import formatting step)
 - Docker Desktop or another Docker runtime if you use the published container image
+
+For local day-to-day development, `make help` lists the maintained task entrypoints.
 
 ### Make Targets
 

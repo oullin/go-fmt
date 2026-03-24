@@ -1,0 +1,9 @@
+.git
+.github
+.DS_Store
+.gocache
+.idea
+bin
+dist
+go-fmt.yml
+coverage.out

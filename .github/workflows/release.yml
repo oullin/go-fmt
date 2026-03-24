@@ -83,29 +83,58 @@ jobs:
       - name: Build binaries
         run: make release VERSION="${{ steps.version.outputs.new_tag }}"
 
-      - name: Sign macOS binary
+      - name: Sign macOS binaries
         run: |
-          codesign \
-            --force \
-            --options runtime \
-            --timestamp \
-            --sign "$APPLE_SIGNING_IDENTITY" \
-            dist/fmt-darwin-arm64
-          codesign --verify --verbose=4 dist/fmt-darwin-arm64
+          set -euo pipefail
 
-      - name: Notarize macOS binary
-        run: |
-          ditto -c -k --keepParent dist/fmt-darwin-arm64 dist/fmt-darwin-arm64.zip
-          xcrun notarytool submit dist/fmt-darwin-arm64.zip \
-            --apple-id "$APPLE_ID" \
-            --password "$APPLE_APP_SPECIFIC_PASSWORD" \
-            --team-id "$APPLE_TEAM_ID" \
-            --wait
-          spctl --assess --type execute --verbose=4 dist/fmt-darwin-arm64
+          for binary in dist/fmt-darwin-amd64 dist/fmt-darwin-arm64
+          do
+            codesign \
+              --force \
+              --options runtime \
+              --timestamp \
+              --sign "$APPLE_SIGNING_IDENTITY" \
+              "$binary"
+            codesign --verify --verbose=4 "$binary"
+          done
 
-      - name: Package Linux binary
+      - name: Package and notarize macOS binaries
         run: |
-          tar -czf dist/fmt-linux-amd64.tar.gz -C dist fmt-linux-amd64
+          set -euo pipefail
+
+          for binary in fmt-darwin-amd64 fmt-darwin-arm64
+          do
+            (
+              cd dist
+              ditto -c -k --norsrc "$binary" "$binary.zip"
+            )
+            xcrun notarytool submit "dist/$binary.zip" \
+              --apple-id "$APPLE_ID" \
+              --password "$APPLE_APP_SPECIFIC_PASSWORD" \
+              --team-id "$APPLE_TEAM_ID" \
+              --wait
+            spctl --assess --type execute --verbose=4 "dist/$binary"
+          done
+
+      - name: Package Linux binaries
+        run: |
+          set -euo pipefail
+
+          for binary in fmt-linux-amd64 fmt-linux-arm64
+          do
+            tar -czf "dist/$binary.tar.gz" -C dist "$binary"
+          done
+
+      - name: Generate checksums
+        run: |
+          set -euo pipefail
+
+          shasum -a 256 \
+            dist/fmt-darwin-amd64.zip \
+            dist/fmt-darwin-arm64.zip \
+            dist/fmt-linux-amd64.tar.gz \
+            dist/fmt-linux-arm64.tar.gz \
+            > dist/checksums.txt
 
       - name: Create release
         uses: softprops/action-gh-release@v2
@@ -114,5 +143,8 @@ jobs:
           prerelease: false
           generate_release_notes: true
           files: |
+            dist/fmt-darwin-amd64.zip
             dist/fmt-darwin-arm64.zip
             dist/fmt-linux-amd64.tar.gz
+            dist/fmt-linux-arm64.tar.gz
+            dist/checksums.txt

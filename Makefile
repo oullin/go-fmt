@@ -13,7 +13,7 @@ VERSION ?= $(shell git describe --tags --always --dirty 2>/dev/null || echo dev)
 CGO_ENABLED ?= 0
 HOST_OS := $(shell uname -s | tr '[:upper:]' '[:lower:]')
 HOST_ARCH := $(shell arch="$$(uname -m)"; if [ "$$arch" = "x86_64" ] || [ "$$arch" = "amd64" ]; then echo amd64; elif [ "$$arch" = "arm64" ] || [ "$$arch" = "aarch64" ]; then echo arm64; else echo "$$arch"; fi)
-RELEASE_PLATFORMS := darwin/arm64 linux/amd64
+RELEASE_PLATFORMS := darwin/amd64 darwin/arm64 linux/amd64 linux/arm64
 
 .PHONY: help run check format check-json check-agent config build release test test-race test-short vet lint install install-tools clean
 
@@ -63,6 +63,7 @@ build:
 	chmod +x $(BIN)
 
 release:
+	rm -rf $(DIST_DIR)
 	mkdir -p $(DIST_DIR)
 	@for platform in $(RELEASE_PLATFORMS); do \
 		GOOS=$${platform%/*}; \
@@ -74,9 +75,10 @@ release:
 		esac; \
 		case $${GOARCH} in \
 			amd64) arch_label="x86_64" ;; \
-			arm64) arch_label="Apple Silicon" ;; \
+			arm64) arch_label="arm64" ;; \
 			*)     arch_label=$${GOARCH} ;; \
 		esac; \
+		if [ "$${GOOS}" = "darwin" ] && [ "$${GOARCH}" = "arm64" ]; then arch_label="Apple Silicon"; fi; \
 		output="$(DIST_DIR)/$(APP)-$${GOOS}-$${GOARCH}"; \
 		echo "Building $${os_label} $${arch_label} ($${GOOS}/$${GOARCH})..."; \
 		CGO_ENABLED=$(CGO_ENABLED) GOOS=$${GOOS} GOARCH=$${GOARCH} go build -ldflags "-X main.version=$(VERSION)" -o "$${output}" $(CMD); \

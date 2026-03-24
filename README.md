@@ -38,6 +38,15 @@ make build
 ./bin/fmt format .
 ```
 
+**Or download a release archive for your platform:**
+
+- `fmt-darwin-amd64.zip`
+- `fmt-darwin-arm64.zip`
+- `fmt-linux-amd64.tar.gz`
+- `fmt-linux-arm64.tar.gz`
+
+Each archive contains a single executable named for its target platform, such as `fmt-linux-amd64` or `fmt-darwin-arm64`.
+
 If you downloaded a standalone binary from an older release, make sure it is executable before running it:
 
 ```bash
@@ -344,7 +353,7 @@ Compact JSON designed for AI agents and CI pipelines. Groups output by changed f
 ```bash
 make help            # list all targets and variables
 make build           # compile a host-native binary to ./bin/fmt
-make release         # build release binaries to ./dist
+make release         # rebuild ./dist with darwin+linux amd64/arm64 binaries
 make test            # run all tests with verbose output
 make test-race       # run tests with race detector
 make test-short      # run tests in short mode
@@ -390,7 +399,22 @@ Browser-downloaded macOS binaries need Apple Developer ID signing and notarizati
 - `APPLE_APP_SPECIFIC_PASSWORD`
 - `APPLE_TEAM_ID`
 
-The workflow signs `dist/fmt-darwin-arm64`, notarizes a ZIP containing that binary, packages the Linux build as `dist/fmt-linux-amd64.tar.gz`, and publishes those archives as the release assets so executable permissions are preserved on download. Apple does not support stapling tickets to standalone binaries, so the macOS binary inside the ZIP relies on Gatekeeper’s online ticket lookup at first launch.
+`make release` removes any existing `dist/` contents and rebuilds these raw binaries:
+
+- `dist/fmt-darwin-amd64`
+- `dist/fmt-darwin-arm64`
+- `dist/fmt-linux-amd64`
+- `dist/fmt-linux-arm64`
+
+The GitHub release workflow signs both macOS binaries, notarizes ZIP archives for each macOS target, packages both Linux binaries as `tar.gz`, generates `dist/checksums.txt`, and publishes exactly these release assets:
+
+- `dist/fmt-darwin-amd64.zip`
+- `dist/fmt-darwin-arm64.zip`
+- `dist/fmt-linux-amd64.tar.gz`
+- `dist/fmt-linux-arm64.tar.gz`
+- `dist/checksums.txt`
+
+Apple does not support stapling tickets to standalone binaries, so each macOS binary inside its ZIP relies on Gatekeeper’s online ticket lookup at first launch.
 
 ---
 

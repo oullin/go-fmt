@@ -1,6 +1,11 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+if [[ "${1:-}" == "source" ]]; then
+	gofmt -w .
+	exit 0
+fi
+
 output="${1:-text}"
 config="${2:-}"
 shift 2 || true

@@ -90,7 +90,7 @@ vet: ## Run go vet across the module
 	go vet ./...
 
 fmt-source: ## Rewrite Go source formatting in the repository
-	@./scripts/fmt-source.sh
+	@./scripts/format.sh source
 
 install: ## Install the CLI with go install
 	go install $(CMD)

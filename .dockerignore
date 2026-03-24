@@ -7,3 +7,4 @@ bin
 dist
 go-fmt.yml
 coverage.out
+dist-test/

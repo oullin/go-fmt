@@ -1,114 +1,101 @@
 SHELL := /bin/bash
+.DEFAULT_GOAL := help
 
 APP := fmt
 CMD := ./cmd/fmt
 BUILD_DIR := bin
 BIN := $(BUILD_DIR)/$(APP)
-ARGS ?= .
-CONFIG ?=
-OUTPUT ?= text
-GOIMPORTS := golang.org/x/tools/cmd/goimports@latest
-DIST_DIR := dist
-VERSION ?= $(shell git describe --tags --always --dirty 2>/dev/null || echo dev)
-CGO_ENABLED ?= 0
-HOST_OS := $(shell uname -s | tr '[:upper:]' '[:lower:]')
-HOST_ARCH := $(shell arch="$$(uname -m)"; if [ "$$arch" = "x86_64" ] || [ "$$arch" = "amd64" ]; then echo amd64; elif [ "$$arch" = "arm64" ] || [ "$$arch" = "aarch64" ]; then echo arm64; else echo "$$arch"; fi)
-RELEASE_PLATFORMS := darwin/amd64 darwin/arm64 linux/amd64 linux/arm64
 
-.PHONY: help run check format check-json check-agent config build release test test-race test-short vet lint install install-tools clean
+ARGS ?= . ## Files or directories to target
+CONFIG ?= ## Path to config file
+OUTPUT ?= text ## Output format for check and format commands
+VERSION ?= $(shell git describe --tags --always --dirty 2>/dev/null || echo dev) ## Build version injected into binaries
+CGO_ENABLED ?= 0 ## CGO setting used for build and release
+DIST_DIR ?= dist ## Directory for release binaries
+RELEASE_PLATFORMS ?= darwin/amd64 darwin/arm64 linux/amd64 linux/arm64 ## Space-separated GOOS/GOARCH release targets
 
-help:
-	@echo "go-fmt developer targets"
-	@echo ""
-	@echo "Usage:"
-	@echo "  make run"
-	@echo "  make check"
-	@echo "  make format"
-	@echo "  make check ARGS=./rules/spacing/spacing.go"
-	@echo "  make format ARGS=./rules/spacing/spacing.go"
-	@echo "  make check-json"
-	@echo "  make check-agent"
-	@echo "  make config"
-	@echo "  make build"
-	@echo "  make release"
-	@echo "  make test"
-	@echo ""
-	@echo "Variables:"
-	@echo "  ARGS=$(ARGS)"
-	@echo "  CONFIG=$(CONFIG)"
-	@echo "  OUTPUT=$(OUTPUT)"
+HOST_OS := $(shell go env GOOS)
+HOST_ARCH := $(shell go env GOARCH)
 
-run:
-	go run $(CMD) --help
+.PHONY: help check format check-json check-agent config build release test test-race test-short vet fmt-source install clean
 
-check:
-	go run $(CMD) check $(if $(CONFIG),--config $(CONFIG),) --format $(OUTPUT) $(ARGS)
+help: ## Show available targets and override variables
+	@awk '\
+		BEGIN { \
+			FS = "## "; \
+		} \
+		function trim(value) { \
+			gsub(/^[[:space:]]+|[[:space:]]+$$/, "", value); \
+			return value; \
+		} \
+		/^[a-zA-Z0-9_.-]+:.*## / { \
+			split($$1, parts, ":"); \
+			targets[++target_count] = sprintf("  %-14s %s", parts[1], $$2); \
+			next; \
+		} \
+		/^[A-Z_][A-Z0-9_]*[[:space:]]*\?*=.*## / { \
+			split($$1, parts, "\\?="); \
+			vars[++var_count] = sprintf("  %-18s %-24s %s", trim(parts[1]), trim(parts[2]), $$2); \
+		} \
+		END { \
+			printf "go-fmt developer targets\n\nTargets:\n"; \
+			for (i = 1; i <= target_count; i++) { \
+				print targets[i]; \
+			} \
+			if (var_count) { \
+				printf "\nVariables:\n"; \
+				for (i = 1; i <= var_count; i++) { \
+					print vars[i]; \
+				} \
+			} \
+		} \
+	' $(MAKEFILE_LIST)
+	@printf "\nExamples:\n"
+	@printf "  make check ARGS=./rules/spacing/spacing.go\n"
+	@printf "  make check CONFIG=./go-fmt.yml\n"
+	@printf "  make check-json\n"
+	@printf "  make fmt-source\n"
 
-format:
-	go run $(CMD) format $(if $(CONFIG),--config $(CONFIG),) --format $(OUTPUT) $(ARGS)
+check: ## Run formatter checks against ARGS
+	@./scripts/check.sh "$(strip $(OUTPUT))" "$(strip $(CONFIG))" $(strip $(ARGS))
 
-check-json:
-	go run $(CMD) check $(if $(CONFIG),--config $(CONFIG),) --format json $(ARGS)
+check-json: OUTPUT := json
+check-json: check ## Run formatter checks with JSON output
 
-check-agent:
-	go run $(CMD) check $(if $(CONFIG),--config $(CONFIG),) --format agent $(ARGS)
+check-agent: OUTPUT := agent
+check-agent: check ## Run formatter checks with agent output
 
-config:
-	cp -n go-fmt.yml.example go-fmt.yml || true
-	@echo "config ready at ./go-fmt.yml"
+format: ## Apply formatter changes to ARGS
+	@./scripts/format.sh "$(strip $(OUTPUT))" "$(strip $(CONFIG))" $(strip $(ARGS))
 
-build:
-	mkdir -p $(BUILD_DIR)
-	CGO_ENABLED=$(CGO_ENABLED) GOOS=$(HOST_OS) GOARCH=$(HOST_ARCH) go build -ldflags "-X main.version=$(VERSION)" -o $(BIN) $(CMD)
-	chmod +x $(BIN)
+config: ## Create ./go-fmt.yml if it does not exist
+	@./scripts/config.sh
 
-release:
-	rm -rf $(DIST_DIR)
-	mkdir -p $(DIST_DIR)
-	@for platform in $(RELEASE_PLATFORMS); do \
-		GOOS=$${platform%/*}; \
-		GOARCH=$${platform#*/}; \
-		case $${GOOS} in \
-			darwin) os_label="macOS" ;; \
-			linux)  os_label="Linux" ;; \
-			*)      os_label=$${GOOS} ;; \
-		esac; \
-		case $${GOARCH} in \
-			amd64) arch_label="x86_64" ;; \
-			arm64) arch_label="arm64" ;; \
-			*)     arch_label=$${GOARCH} ;; \
-		esac; \
-		if [ "$${GOOS}" = "darwin" ] && [ "$${GOARCH}" = "arm64" ]; then arch_label="Apple Silicon"; fi; \
-		output="$(DIST_DIR)/$(APP)-$${GOOS}-$${GOARCH}"; \
-		echo "Building $${os_label} $${arch_label} ($${GOOS}/$${GOARCH})..."; \
-		CGO_ENABLED=$(CGO_ENABLED) GOOS=$${GOOS} GOARCH=$${GOARCH} go build -ldflags "-X main.version=$(VERSION)" -o "$${output}" $(CMD); \
-		chmod +x "$${output}"; \
-	done
+build: ## Build a host-native binary into ./bin
+	@APP='$(APP)' CMD='$(CMD)' BUILD_DIR='$(BUILD_DIR)' BIN='$(BIN)' VERSION='$(strip $(VERSION))' CGO_ENABLED='$(strip $(CGO_ENABLED))' HOST_OS='$(HOST_OS)' HOST_ARCH='$(HOST_ARCH)' ./scripts/build.sh
 
-test:
+release: ## Build release binaries into $(DIST_DIR)
+	@APP='$(APP)' CMD='$(CMD)' DIST_DIR='$(strip $(DIST_DIR))' VERSION='$(strip $(VERSION))' CGO_ENABLED='$(strip $(CGO_ENABLED))' RELEASE_PLATFORMS='$(strip $(RELEASE_PLATFORMS))' ./scripts/release.sh
+
+test: ## Run all tests with verbose output
 	go test ./... -v
 
-test-race:
+test-race: ## Run all tests with the race detector
 	go test ./... -race -v
 
-test-short:
+test-short: ## Run tests in short mode
 	go test ./... -short
 
-vet:
+vet: ## Run go vet across the module
 	go vet ./...
 
-lint:
-	gofmt -w .
-	go test ./...
-	go vet ./...
+fmt-source: ## Rewrite Go source formatting in the repository
+	@./scripts/fmt-source.sh
 
-install:
+install: ## Install the CLI with go install
 	go install $(CMD)
 
-install-tools:
-	go install $(GOIMPORTS)
-
-clean:
+clean: ## Remove build artifacts and clean the Go cache
 	rm -f $(BIN)
 	rm -rf $(DIST_DIR)
 	go clean -cache

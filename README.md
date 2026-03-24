@@ -35,11 +35,15 @@ On macOS, this runs as a Linux container via Docker Desktop rather than as a nat
 
 **Or install from source with Go:**
 
+Requires Go 1.25 or newer in your local environment.
+
 ```bash
 go install github.com/oullin/go-fmt/cmd/fmt@latest
 ```
 
 **Or build from source locally:**
+
+Local builds and tests require Go 1.25 or newer.
 
 ```bash
 make build
@@ -333,7 +337,7 @@ Compact JSON designed for AI agents and CI pipelines. Groups output by changed f
 
 ### Prerequisites
 
-- Go 1.24+
+- Go 1.25 or newer
 - `goimports` (optional, for the import formatting step)
 - Docker Desktop or another Docker runtime if you use the published container image
 
@@ -341,14 +345,18 @@ Compact JSON designed for AI agents and CI pipelines. Groups output by changed f
 
 ```bash
 make help            # list all targets and variables
+make check           # run semantic checks against ARGS
+make format          # apply semantic formatting to ARGS
+make check-json      # run checks with JSON output
+make check-agent     # run checks with agent output
 make build           # compile a host-native binary to ./bin/fmt
+make release         # build release binaries into ./dist
 make test            # run all tests with verbose output
 make test-race       # run tests with race detector
 make test-short      # run tests in short mode
 make vet             # run go vet
-make lint            # gofmt + test + vet
+make fmt-source      # rewrite Go source formatting in the repo
 make install         # go install the CLI
-make install-tools   # install goimports
 make config          # copy go-fmt.yml.example to go-fmt.yml
 make clean           # remove build artefacts and clean cache
 ```
@@ -360,6 +368,10 @@ make clean           # remove build artefacts and clean cache
 | `ARGS` | `.` | Files or directories to target |
 | `CONFIG` | _(empty)_ | Path to config file |
 | `OUTPUT` | `text` | Output format for check commands |
+| `VERSION` | `git describe ...` or `dev` | Build version injected into binaries |
+| `CGO_ENABLED` | `0` | CGO setting for build and release |
+| `DIST_DIR` | `dist` | Directory for release binaries |
+| `RELEASE_PLATFORMS` | `darwin/amd64 darwin/arm64 linux/amd64 linux/arm64` | Space-separated GOOS/GOARCH pairs for `make release` |
 
 ```bash
 # check a specific file
@@ -373,6 +385,12 @@ make check-json
 
 # agent output
 make check-agent
+
+# rewrite Go source formatting
+make fmt-source
+
+# override release output directory
+make release DIST_DIR=builds
 ```
 
 ### Docker Distribution

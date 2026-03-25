@@ -68,4 +68,5 @@ if [[ ${#semantic_args[@]} -gt 0 ]]; then
 	go -C "$GO_WORKDIR" run "$CMD" format --cwd . "${semantic_args[@]}"
 fi
 
-"$oxfmt_bin" --write --no-error-on-unmatched-pattern "${args[@]}"
+git ls-files --cached --others --exclude-standard -z -- "${args[@]}" \
+	| xargs -0 "$oxfmt_bin" --write --no-error-on-unmatched-pattern

@@ -16,10 +16,10 @@ jobs:
                     - tooling
 
         steps:
-            - uses: actions/checkout@v4
+            - uses: actions/checkout@v6
               name: Checkout repository
 
-            - uses: actions/setup-node@v4
+            - uses: actions/setup-node@v6
               name: Install Node
               with:
                   node-version: 25
@@ -29,7 +29,7 @@ jobs:
               with:
                   version: 10.32.1
 
-            - uses: actions/setup-go@v5
+            - uses: actions/setup-go@v6
               if: matrix.workspace == 'semantic'
               name: Install Go
               with:
@@ -47,10 +47,10 @@ jobs:
         runs-on: ubuntu-latest
 
         steps:
-            - uses: actions/checkout@v4
+            - uses: actions/checkout@v6
               name: Checkout repository
 
-            - uses: actions/setup-go@v5
+            - uses: actions/setup-go@v6
               name: Install Go
               with:
                   go-version-file: semantic/go.mod

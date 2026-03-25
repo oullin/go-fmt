@@ -51,6 +51,13 @@ docker run --rm -u "$(id -u):$(id -g)" -v "$PWD":/work -w /work ghcr.io/oullin/g
 docker run --rm -u "$(id -u):$(id -g)" -v "$PWD":/work -w /work ghcr.io/oullin/go-fmt:latest format .
 ```
 
+If you prefer a reusable Compose file, download [`examples/consumer/go-fmt.compose.yaml`](./examples/consumer/go-fmt.compose.yaml) and run:
+
+```bash
+docker compose -f /path/to/go-fmt.compose.yaml --project-directory "$PWD" run --rm -u "$(id -u):$(id -g)" go-fmt check .
+docker compose -f /path/to/go-fmt.compose.yaml --project-directory "$PWD" run --rm -u "$(id -u):$(id -g)" go-fmt format .
+```
+
 To run from the repo without installing anything:
 
 ```bash
@@ -116,6 +123,36 @@ docker run --rm -u "$(id -u):$(id -g)" -v "$PWD":/work -w /work ghcr.io/oullin/g
 ```
 
 On macOS, this runs as a Linux container via Docker Desktop rather than as a native trusted macOS binary.
+
+### Option 4: Use Docker Compose
+
+If you want one reusable Compose file that you can download and use across projects, use [`examples/consumer/go-fmt.compose.yaml`](./examples/consumer/go-fmt.compose.yaml).
+
+If you copy the file into a project root:
+
+```bash
+docker compose -f go-fmt.compose.yaml run --rm -u "$(id -u):$(id -g)" go-fmt check .
+docker compose -f go-fmt.compose.yaml run --rm -u "$(id -u):$(id -g)" go-fmt format .
+```
+
+If you keep the file somewhere central and reuse it from other projects, run the command from the target project root and set `--project-directory "$PWD"` so `.` binds the current project instead of the directory that stores the Compose file:
+
+```bash
+docker compose -f /path/to/go-fmt.compose.yaml --project-directory "$PWD" run --rm -u "$(id -u):$(id -g)" go-fmt check .
+docker compose -f /path/to/go-fmt.compose.yaml --project-directory "$PWD" run --rm -u "$(id -u):$(id -g)" go-fmt format .
+```
+
+The downloadable Compose file is intentionally minimal:
+
+```yaml
+services:
+  go-fmt:
+    image: ghcr.io/oullin/go-fmt:v0.0.2
+    working_dir: /work
+    volumes:
+      - .:/work
+    command: ["help"]
+```
 
 ---
 
@@ -463,6 +500,13 @@ Use the published image against your current repository like this:
 ```bash
 docker run --rm -u "$(id -u):$(id -g)" -v "$PWD":/work -w /work ghcr.io/oullin/go-fmt:latest check .
 docker run --rm -u "$(id -u):$(id -g)" -v "$PWD":/work -w /work ghcr.io/oullin/go-fmt:latest format .
+```
+
+If you prefer a reusable Compose file, download [`examples/consumer/go-fmt.compose.yaml`](./examples/consumer/go-fmt.compose.yaml) and invoke it from the target project root:
+
+```bash
+docker compose -f /path/to/go-fmt.compose.yaml --project-directory "$PWD" run --rm -u "$(id -u):$(id -g)" go-fmt check .
+docker compose -f /path/to/go-fmt.compose.yaml --project-directory "$PWD" run --rm -u "$(id -u):$(id -g)" go-fmt format .
 ```
 
 `docker run ghcr.io/oullin/go-fmt:latest` defaults to `help`, so it prints usage if you do not pass a subcommand.

@@ -18,6 +18,8 @@ FROM alpine:3.21
 
 WORKDIR /work
 
+RUN apk add --no-cache go
+
 COPY --from=builder /out/fmt /usr/local/bin/fmt
 
 ENTRYPOINT ["/usr/local/bin/fmt"]

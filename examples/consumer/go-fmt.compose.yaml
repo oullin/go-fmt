@@ -1,0 +1,7 @@
+services:
+  go-fmt:
+    image: ghcr.io/oullin/go-fmt:v0.0.2
+    working_dir: /work
+    volumes:
+      - .:/work
+    command: ["help"]

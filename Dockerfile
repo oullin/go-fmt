@@ -19,7 +19,13 @@ RUN CGO_ENABLED=0 GOOS=${TARGETOS} GOARCH=${TARGETARCH} \
 
 RUN CGO_ENABLED=0 GOOS=${TARGETOS} GOARCH=${TARGETARCH} GOPATH=/tmp/go \
 	go install -trimpath -ldflags="-s -w" golang.org/x/tools/cmd/goimports@v0.43.0 && \
-	cp /tmp/go/bin/${TARGETOS}_${TARGETARCH}/goimports /out/goimports
+	if [ -f /tmp/go/bin/${TARGETOS}_${TARGETARCH}/goimports ]; then \
+		cp /tmp/go/bin/${TARGETOS}_${TARGETARCH}/goimports /out/goimports; \
+	elif [ -f /tmp/go/bin/goimports ]; then \
+		cp /tmp/go/bin/goimports /out/goimports; \
+	else \
+		echo "goimports binary not found after install" >&2; exit 1; \
+	fi
 
 FROM alpine:3.21
 

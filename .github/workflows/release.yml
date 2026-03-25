@@ -23,9 +23,9 @@ jobs:
                     - tooling
 
         steps:
-            - uses: actions/checkout@v4
+            - uses: actions/checkout@v6
 
-            - uses: actions/setup-node@v4
+            - uses: actions/setup-node@v6
               with:
                   node-version: 25
 
@@ -33,7 +33,7 @@ jobs:
               with:
                   version: 10.32.1
 
-            - uses: actions/setup-go@v5
+            - uses: actions/setup-go@v6
               if: matrix.workspace == 'semantic'
               with:
                   go-version-file: semantic/go.mod
@@ -50,9 +50,9 @@ jobs:
         runs-on: ubuntu-latest
 
         steps:
-            - uses: actions/checkout@v4
+            - uses: actions/checkout@v6
 
-            - uses: actions/setup-go@v5
+            - uses: actions/setup-go@v6
               with:
                   go-version-file: semantic/go.mod
                   cache-dependency-path: semantic/go.sum
@@ -67,7 +67,7 @@ jobs:
         runs-on: ubuntu-latest
 
         steps:
-            - uses: actions/checkout@v4
+            - uses: actions/checkout@v6
               with:
                   fetch-depth: 0
 

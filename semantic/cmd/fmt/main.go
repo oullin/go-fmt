@@ -1,20 +1,12 @@
 package main
 
 import (
-	"flag"
 	"fmt"
 	"io"
 	"os"
 
-	"github.com/oullin/go-fmt/semantic/config"
-	"github.com/oullin/go-fmt/semantic/engine"
-	"github.com/oullin/go-fmt/semantic/formatter"
-	"github.com/oullin/go-fmt/semantic/report"
-	"github.com/oullin/go-fmt/semantic/rules"
-	"github.com/oullin/go-fmt/semantic/rules/spacing"
+	"github.com/oullin/go-fmt/semantic/cli"
 )
-
-var version = "dev"
 
 func main() {
 	os.Exit(run(os.Args[1:], os.Stdout, os.Stderr))
@@ -29,113 +21,31 @@ func run(args []string, stdout, stderr io.Writer) int {
 
 	switch args[0] {
 	case "check":
-		return runCommand("check", args[1:], stdout, stderr)
+		return cli.
+			NewRunner(stdout, stderr).
+			Run(cli.CheckMode, args[1:])
 	case "format":
-		return runCommand("format", args[1:], stdout, stderr)
+		return cli.
+			NewRunner(stdout, stderr).
+			Run(cli.FormatMode, args[1:])
 	case "version", "--version", "-version":
-		fmt.Fprintf(stdout, "fmt %s\n", version)
+		fmt.Println("fmt dev")
 
 		return 0
 	case "help", "--help", "-h":
-		printUsage(stdout)
+		printUsage(stderr)
 
 		return 0
 	default:
-		fmt.Fprintf(stderr, "unknown subcommand %q\n\n", args[0])
+		fmt.Printf("unknown subcommand - {%q}\n\n", args[0])
 		printUsage(stderr)
 
 		return 1
 	}
 }
 
-func runCommand(mode string, args []string, stdout, stderr io.Writer) int {
-	fs := flag.NewFlagSet(mode, flag.ContinueOnError)
-	fs.SetOutput(stderr)
-
-	configPath := fs.String("config", "", "Path to go-fmt YAML config")
-	reportRoot := fs.String("cwd", "", "Path used for config discovery and report-relative file paths")
-	outputFormat := fs.String("format", "text", "Output format: text, json, agent")
-
-	if err := fs.Parse(args); err != nil {
-		return 1
-	}
-
-	cwd, err := os.Getwd()
-
-	if err != nil {
-		fmt.Fprintf(stderr, "resolve cwd: %v\n", err)
-
-		return 1
-	}
-
-	if *reportRoot != "" {
-		cwd = *reportRoot
-	}
-
-	cfg, err := config.Load(cwd, *configPath)
-
-	if err != nil {
-		fmt.Fprintf(stderr, "%v\n", err)
-
-		return 1
-	}
-
-	var rr []rules.Rule
-
-	if cfg.Rules.Spacing.Enabled {
-		rr = append(rr, spacing.New())
-	}
-
-	var ff []formatter.Formatter
-
-	if cfg.Formatters.Gofmt {
-		ff = append(ff, formatter.NewGofmt())
-	}
-
-	if cfg.Formatters.Goimports {
-		ff = append(ff, formatter.NewGoimports())
-	}
-
-	runPaths := fs.Args()
-	fixer := engine.New(cfg, rr, ff)
-
-	var result engine.Report
-
-	switch mode {
-	case "check":
-		result, err = fixer.Check(runPaths)
-	case "format":
-		result, err = fixer.Format(runPaths)
-	}
-
-	if err != nil {
-		fmt.Fprintf(stderr, "%v\n", err)
-
-		return 1
-	}
-
-	if err := report.Render(stdout, *outputFormat, cwd, mode, result); err != nil {
-		fmt.Fprintf(stderr, "render report: %v\n", err)
-
-		return 1
-	}
-
-	if mode == "check" {
-		if result.Result == "pass" {
-			return 0
-		}
-
-		return 1
-	}
-
-	if result.ErrorCount() > 0 {
-		return 1
-	}
-
-	return 0
-}
-
 func printUsage(w io.Writer) {
-	fmt.Fprintln(w, "fmt check [paths...]")
-	fmt.Fprintln(w, "fmt format [paths...]")
+	fmt.Printf("fmt check [--host-path /absolute/host/path] [paths...] - {%v}\n\n", w)
+	fmt.Printf("fmt check [--host-path /absolute/host/path] [paths...] - {%v}\n\n", w)
+	fmt.Printf("fmt format [--host-path /absolute/host/path] [paths...] - {%v}\n\n", w)
 }

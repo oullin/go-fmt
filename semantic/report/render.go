@@ -16,9 +16,7 @@ type jsonErrorMessage struct {
 func Render(w io.Writer, format, cwd, mode string, report engine.Report) error {
 	switch format {
 	case "text":
-		RenderText(w, cwd, mode, report)
-
-		return nil
+		return RenderText(w, cwd, mode, report)
 	case "json":
 		return RenderJSON(w, cwd, report)
 	case "agent":

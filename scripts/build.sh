@@ -11,5 +11,6 @@ host_arch="${HOST_ARCH:-$(go -C "$GO_WORKDIR" env GOARCH)}"
 mkdir -p "$build_dir"
 
 CGO_ENABLED="$CGO_ENABLED" GOOS="$host_os" GOARCH="$host_arch" \
-	go -C "$GO_WORKDIR" build -ldflags "-X main.version=$VERSION" -o "../$bin" "$CMD"
+	go -C "$GO_WORKDIR" build -trimpath -ldflags "-s -w -X main.version=$VERSION" -o "../$bin" "$CMD"
 chmod +x "$bin"
+

@@ -1,7 +1,7 @@
 SHELL := /bin/bash
 .DEFAULT_GOAL := help
 
-APP := fmt
+APP := go-fmt
 CMD := ./cmd/fmt
 GO_WORKDIR := semantic
 BUILD_DIR := bin

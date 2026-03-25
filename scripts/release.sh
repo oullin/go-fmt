@@ -39,7 +39,7 @@ for platform in $release_platforms; do
 	printf 'Building %s %s (%s/%s)...\n' "$(os_label "$goos")" "$(arch_label "$goos" "$goarch")" "$goos" "$goarch"
 
 	CGO_ENABLED="$CGO_ENABLED" GOOS="$goos" GOARCH="$goarch" \
-		go -C "$GO_WORKDIR" build -ldflags "-X main.version=$VERSION" -o "../$output" "$CMD"
+		go -C "$GO_WORKDIR" build -trimpath -ldflags "-s -w -X main.version=$VERSION" -o "../$output" "$CMD"
 
 	chmod +x "$output"
 done

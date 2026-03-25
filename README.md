@@ -72,7 +72,7 @@ go run ./semantic/cmd/fmt format .
 `go-fmt` can be used as a local binary, a source build, or a container.
 
 | Method       | Best for                | Command                                                                                                |
-| ------------ | ----------------------- | ------------------------------------------------------------------------------------------------------ |
+|--------------|-------------------------|--------------------------------------------------------------------------------------------------------|
 | `go install` | regular local CLI usage | `go install github.com/oullin/go-fmt/semantic/cmd/fmt@latest`                                          |
 | `make build` | working from the repo   | `make build`                                                                                           |
 | Docker       | no local binary install | `docker run --rm -u "$(id -u):$(id -g)" -v "$PWD":/work -w /work ghcr.io/oullin/go-fmt:latest check .` |
@@ -165,7 +165,7 @@ services:
 The binary is called `fmt` and exposes two primary commands.
 
 | Command                 | Purpose                                   |
-| ----------------------- | ----------------------------------------- |
+|-------------------------|-------------------------------------------|
 | `fmt check [paths...]`  | report violations without writing changes |
 | `fmt format [paths...]` | fix violations and write changes to disk  |
 
@@ -174,7 +174,7 @@ If no paths are provided, both commands default to the current directory (`.`).
 Both commands accept the same flags:
 
 | Flag          | Description                                                                          | Default                            |
-| ------------- | ------------------------------------------------------------------------------------ | ---------------------------------- |
+|---------------|--------------------------------------------------------------------------------------|------------------------------------|
 | `--config`    | Path to a `config.yml` config file                                                   | auto-detected in working directory |
 | `--cwd`       | Path used for config discovery and report-relative file paths                        | current working directory          |
 | `--format`    | Output format: `text`, `json`, or `agent`                                            | `text`                             |
@@ -239,7 +239,7 @@ not_name:
 ```
 
 | Field                   | Type | Default                          | Description                                 |
-| ----------------------- | ---- | -------------------------------- | ------------------------------------------- |
+|-------------------------|------|----------------------------------|---------------------------------------------|
 | `rules.spacing.enabled` | bool | `true`                           | Toggle the spacing rule on or off           |
 | `formatters.gofmt`      | bool | `true`                           | Run `gofmt` after semantic rules            |
 | `formatters.goimports`  | bool | `true`                           | Run `goimports` after `gofmt`               |
@@ -351,7 +351,7 @@ The spacing rule inspects statement lists inside:
 When given directories, the engine walks them recursively and collects `.go` files. The following are always skipped:
 
 | Skipped                                 | Reason                                 |
-| --------------------------------------- | -------------------------------------- |
+|-----------------------------------------|----------------------------------------|
 | Hidden directories (`.foo/`)            | Convention — not source code           |
 | `.git/`                                 | Repository metadata                    |
 | `vendor/`                               | Vendored dependencies                  |
@@ -430,7 +430,7 @@ Compact JSON designed for AI agents and CI pipelines. It groups changed files an
 ## Exit Codes
 
 | Command      | Code | Meaning                             |
-| ------------ | ---- | ----------------------------------- |
+|--------------|------|-------------------------------------|
 | `fmt check`  | `0`  | No violations found — code is clean |
 | `fmt check`  | `1`  | Violations or errors detected       |
 | `fmt format` | `0`  | Formatting applied successfully     |
@@ -476,7 +476,7 @@ make clean           # remove build artefacts and clean cache
 ### Make Variables
 
 | Variable            | Default                                             | Description                                          |
-| ------------------- | --------------------------------------------------- | ---------------------------------------------------- |
+|---------------------|-----------------------------------------------------|------------------------------------------------------|
 | `ARGS`              | `.`                                                 | Files or directories to target                       |
 | `VERSION`           | `git describe ...` or `dev`                         | Build version injected into binaries                 |
 | `CGO_ENABLED`       | `0`                                                 | CGO setting for build and release                    |

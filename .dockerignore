@@ -1,15 +1,49 @@
+# Version control
 .git
 .github
-.DS_Store
-.gocache
+
+# IDE / Editor
 .idea
-.turbo
+.vscode
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Go caches
+.gocache
+.gopath
+
+# Build artifacts
+bin
+builds
+dist
+dist-test/
+
+# Node (not needed for Go Docker build)
 node_modules
 tooling/node_modules
 semantic/node_modules
-bin
-dist
+
+# Turbo
+.turbo
+
+# Runtime / generated
 go-fmt.yml
 coverage.out
-dist-test/
 storage/
+
+# Compiled binaries
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+*.test
+*.out
+
+# Claude
+.claude

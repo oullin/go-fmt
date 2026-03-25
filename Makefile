@@ -52,8 +52,8 @@ help: ## Show available targets and override variables
 		} \
 	' $(MAKEFILE_LIST)
 	@printf "\nExamples:\n"
-	@printf "  make check ARGS=./semantic/rules/spacing/spacing.go\n"
-	@printf "  make check CONFIG=./go-fmt.yml\n"
+	@printf "  pnpm turbo run check --filter=semantic\n"
+	@printf "  pnpm turbo run check --filter=tooling\n"
 	@printf "  make check-json\n"
 	@printf "  make fmt-source\n"
 

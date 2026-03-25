@@ -143,7 +143,7 @@ Both commands accept the same flags:
 | `--config` | Path to a `go-fmt.yml` config file        | auto-detected in working directory |
 | `--format` | Output format: `text`, `json`, or `agent` | `text`                             |
 
-The standalone CLI formats Go source only. Repository-local `make check` and `make format` also run `oxfmt` across every supported non-Go file type in the repo, excluding `*.go`.
+The standalone CLI formats Go source only. Repository-local `make format` also runs `oxfmt` across every supported non-Go file type in the repo, excluding `*.go`. CI checks run per workspace with `pnpm turbo run check --filter=semantic` and `pnpm turbo run check --filter=tooling`.
 
 ### Common Workflows
 
@@ -434,10 +434,11 @@ For local day-to-day development, `make help` lists the maintained task entrypoi
 
 ```bash
 make help            # list all targets and variables
-make check           # run Go checks plus Oxc checks for supported non-Go files
+pnpm turbo run check --filter=semantic   # run semantic workspace checks
+pnpm turbo run check --filter=tooling    # run tooling workspace checks
 make format          # apply Go fixes plus Oxc formatting for supported non-Go files
-make check-json      # run merged checks with JSON output
-make check-agent     # run merged checks with agent output
+make check-json      # run legacy merged checks with JSON output
+make check-agent     # run legacy merged checks with agent output
 make build           # compile a host-native binary to ./bin/fmt
 make release         # build release binaries into ./dist
 make test            # run all tests with verbose output
@@ -463,11 +464,11 @@ make clean           # remove build artefacts and clean cache
 | `RELEASE_PLATFORMS` | `darwin/amd64 darwin/arm64 linux/amd64 linux/arm64` | Space-separated GOOS/GOARCH pairs for `make release` |
 
 ```bash
-# check a specific file
-make check ARGS=./semantic/rules/spacing/spacing.go
+# run semantic workspace checks
+pnpm turbo run check --filter=semantic
 
-# use a specific config
-make check CONFIG=./go-fmt.yml
+# run tooling-only checks
+pnpm turbo run check --filter=tooling
 
 # JSON output
 make check-json

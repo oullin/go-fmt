@@ -6,29 +6,53 @@ on:
       - main
 
 jobs:
-  test:
+  check:
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        workspace:
+          - semantic
+          - tooling
 
     steps:
       - uses: actions/checkout@v4
-
-      - uses: actions/setup-go@v5
-        with:
-          go-version-file: semantic/go.mod
+        name: Checkout repository
 
       - uses: actions/setup-node@v4
+        name: Install Node
         with:
           node-version: 25
 
       - uses: pnpm/action-setup@v4
+        name: Install pnpm
         with:
           version: 10.32.1
+
+      - uses: actions/setup-go@v5
+        if: matrix.workspace == 'semantic'
+        name: Install Go
+        with:
+          go-version-file: semantic/go.mod
 
       - name: Install workspace dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Check
-        run: make check
+      - name: Check ${{ matrix.workspace }}
+        run: pnpm turbo run check --filter=${{ matrix.workspace }}
 
-      - name: Test
+  test:
+    needs: check
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+        name: Checkout repository
+
+      - uses: actions/setup-go@v5
+        name: Install Go
+        with:
+          go-version-file: semantic/go.mod
+
+      - name: Go - Run all tests with the race detector
         run: make test-race

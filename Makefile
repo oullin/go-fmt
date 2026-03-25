@@ -53,8 +53,7 @@ help: ## Show available targets and override variables
 	@printf "  make fmt-source\n"
 
 format: ## Apply formatter changes to ARGS
-	@go -C $(GO_WORKDIR) run $(CMD) format --cwd . $(ARGS)
-	@git ls-files --cached --others --exclude-standard -z | xargs -0 $(OXFMT_BIN) --write --no-error-on-unmatched-pattern
+	@OXFMT_BIN="$(OXFMT_BIN)" ./scripts/format.sh $(ARGS)
 
 build: ## Build a host-native binary into ./bin
 	@VERSION='$(strip $(VERSION))' ./scripts/build.sh

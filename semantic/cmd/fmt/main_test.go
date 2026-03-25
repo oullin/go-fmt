@@ -198,6 +198,68 @@ func TestRunWithHostPathRejectsPositionalPaths(t *testing.T) {
 	}
 }
 
+func TestPrintUsage(t *testing.T) {
+	tests := []struct {
+		name string
+		args []string
+	}{
+		{"no args", nil},
+		{"help subcommand", []string{"help"}},
+		{"help flag", []string{"--help"}},
+		{"short help flag", []string{"-h"}},
+		{"unknown subcommand", []string{"unknown"}},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			exitCode, stdout, stderr := runCLI(t, t.TempDir(), tt.args...)
+
+			// For unknown subcommand, exit code is 1. For help, it is 0. For no args, it is 1.
+			expectedExitCode := 0
+
+			if tt.name == "no args" || tt.name == "unknown subcommand" {
+				expectedExitCode = 1
+			}
+
+			if exitCode != expectedExitCode {
+				t.Errorf("expected exit code %d, got %d", expectedExitCode, exitCode)
+			}
+
+			if stdout != "" {
+				t.Errorf("expected empty stdout, got %q", stdout)
+			}
+
+			if !strings.Contains(stderr, "go-fmt check [--host-path /absolute/host/path] [paths...]") {
+				t.Errorf("expected stderr to contain usage, got %q", stderr)
+			}
+
+			if strings.Contains(stderr, "{%v}") {
+				t.Errorf("stderr contains literal {%%v}: %q", stderr)
+			}
+
+			if tt.name == "unknown subcommand" && !strings.Contains(stderr, "unknown subcommand - {\"unknown\"}") {
+				t.Errorf("expected stderr to contain unknown subcommand error, got %q", stderr)
+			}
+		})
+	}
+}
+
+func TestVersion(t *testing.T) {
+	exitCode, stdout, stderr := runCLI(t, t.TempDir(), "version")
+
+	if exitCode != 0 {
+		t.Errorf("expected exit code 0, got %d", exitCode)
+	}
+
+	if !strings.Contains(stdout, "go-fmt dev") {
+		t.Errorf("expected stdout to contain version, got %q", stdout)
+	}
+
+	if stderr != "" {
+		t.Errorf("expected empty stderr, got %q", stderr)
+	}
+}
+
 func runCLI(t *testing.T, workdir string, args ...string) (int, string, string) {
 	t.Helper()
 

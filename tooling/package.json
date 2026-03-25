@@ -1,13 +1,11 @@
 {
-  "name": "tooling",
-  "private": true,
-  "type": "module",
-  "scripts": {
-    "check": "node ./scripts/oxfmt.mjs check",
-    "format": "node ./scripts/oxfmt.mjs format",
-    "test": "node --test ./test/*.test.mjs"
-  },
-  "devDependencies": {
-    "oxfmt": "0.41.0"
-  }
+	"name": "tooling",
+	"private": true,
+	"scripts": {
+		"check": "cd .. && git ls-files --cached --others --exclude-standard -z | xargs -0 tooling/node_modules/.bin/oxfmt --check --no-error-on-unmatched-pattern",
+		"format": "cd .. && git ls-files --cached --others --exclude-standard -z | xargs -0 tooling/node_modules/.bin/oxfmt --write --no-error-on-unmatched-pattern"
+	},
+	"devDependencies": {
+		"oxfmt": "0.41.0"
+	}
 }

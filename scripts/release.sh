@@ -1,12 +1,9 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-app="${APP:-fmt}"
-go_workdir="${GO_WORKDIR:-semantic}"
-cmd="${CMD:-./cmd/fmt}"
+source "$(dirname "$0")/env.sh"
+
 dist_dir="${DIST_DIR:-dist}"
-version="${VERSION:-dev}"
-cgo_enabled="${CGO_ENABLED:-0}"
 release_platforms="${RELEASE_PLATFORMS:-darwin/amd64 darwin/arm64 linux/amd64 linux/arm64}"
 
 os_label() {
@@ -37,12 +34,12 @@ for platform in $release_platforms; do
 
 	goos="${platform%/*}"
 	goarch="${platform#*/}"
-	output="${dist_dir}/${app}-${goos}-${goarch}"
+	output="${dist_dir}/${APP}-${goos}-${goarch}"
 
 	printf 'Building %s %s (%s/%s)...\n' "$(os_label "$goos")" "$(arch_label "$goos" "$goarch")" "$goos" "$goarch"
 
-	CGO_ENABLED="$cgo_enabled" GOOS="$goos" GOARCH="$goarch" \
-		go -C "$go_workdir" build -ldflags "-X main.version=$version" -o "../$output" "$cmd"
+	CGO_ENABLED="$CGO_ENABLED" GOOS="$goos" GOARCH="$goarch" \
+		go -C "$GO_WORKDIR" build -ldflags "-X main.version=$VERSION" -o "../$output" "$CMD"
 
 	chmod +x "$output"
 done

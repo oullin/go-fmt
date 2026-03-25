@@ -4,7 +4,7 @@
 
 `go-fmt` goes beyond `gofmt`. It applies rule-based semantic formatting — enforcing blank-line boundaries around control flow, ensuring type declarations appear at the top of the file, and normalising spacing around `var`, `defer`, and `return` — then finishes with `gofmt` and `goimports`. The result is consistently styled Go, whether the code was written by a person, an agent, or a code generator.
 
-The project ships as a **reusable engine** and a **standalone CLI** (`fmt`). Rules run first, formatters run second — giving you deterministic, layered formatting in a single pass. The repository itself is now a small Turborepo: the Go formatter lives in the `semantic` workspace, while the `tooling` workspace owns Oxc-based formatting for every supported non-Go file type.
+The project ships as a **reusable engine** and a **standalone CLI** (`fmt`). Rules run first; formatters run second — giving you deterministic, layered formatting in a single pass. The repository itself is now a small Turborepo: the Go formatter lives in the `semantic` workspace, while the `tooling` workspace owns Oxc-based formatting for every supported non-Go file type.
 
 ---
 
@@ -26,7 +26,7 @@ The project ships as a **reusable engine** and a **standalone CLI** (`fmt`). Rul
 
 ## Highlights
 
-- Adds semantic formatting on top of `gofmt`, not just whitespace normalization
+- Adds semantic formatting on top of `gofmt`, not just whitespace normalisation
 - Runs as either a local CLI, a Docker image, or directly from source
 - Supports human-readable, JSON, and agent-oriented output
 - Applies rule fixes first, then standard Go formatters for predictable results
@@ -49,12 +49,6 @@ If you prefer not to install a local binary, run it with Docker:
 ```bash
 docker run --rm -u "$(id -u):$(id -g)" -v "$PWD":/work -w /work ghcr.io/oullin/go-fmt:latest check .
 docker run --rm -u "$(id -u):$(id -g)" -v "$PWD":/work -w /work ghcr.io/oullin/go-fmt:latest format .
-```
-
-If you want a project-local config, copy the example file first:
-
-```bash
-cp go-fmt.yml.example go-fmt.yml
 ```
 
 To run from the repo without installing anything:
@@ -140,7 +134,7 @@ Both commands accept the same flags:
 
 | Flag       | Description                               | Default                            |
 | ---------- | ----------------------------------------- | ---------------------------------- |
-| `--config` | Path to a `go-fmt.yml` config file        | auto-detected in working directory |
+| `--config` | Path to a `config.yml` config file        | auto-detected in working directory |
 | `--format` | Output format: `text`, `json`, or `agent` | `text`                             |
 
 The standalone CLI formats Go source only. Repository-local `make format` also runs `oxfmt` across every supported non-Go file type in the repo, excluding `*.go`. CI checks run per workspace with `pnpm turbo run check --filter=semantic` and `pnpm turbo run check --filter=tooling`.
@@ -152,7 +146,7 @@ The standalone CLI formats Go source only. Repository-local `make format` also r
 fmt check .
 
 # check with a specific config and JSON output
-fmt check --config ./go-fmt.yml --format json .
+fmt check --config ./config.yml --format json .
 
 # format a single file
 fmt format ./semantic/rules/spacing/spacing.go
@@ -165,62 +159,44 @@ fmt check --format agent .
 
 ## Configuration
 
-`go-fmt` looks for a `go-fmt.yml` file in the working directory. If none is found, built-in defaults apply. You can also point to a config explicitly with `--config`.
+`go-fmt` looks for a `config.yml` file in the working directory. If none is found, built-in defaults apply. You can also point to a config explicitly with `--config path/to/config.yml`.
 
-Start from the example config:
-
-```bash
-cp go-fmt.yml.example go-fmt.yml
-```
-
-Minimal config:
-
-```yaml
-rules:
-  spacing:
-    enabled: true
-
-formatters:
-  gofmt: true
-  goimports: true
-```
-
-### Full Config Reference
+All fields are optional — only include the ones you want to override.
 
 ```yaml
 # Enable or disable individual semantic rules.
 rules:
-  spacing:
-    enabled: true # enforce blank-line spacing (default: true)
+    spacing:
+        enabled: true # default: true
 
 # Enable or disable post-rule formatters.
 formatters:
-  gofmt: true # run gofmt after rules (default: true)
-  goimports: true # run goimports after gofmt (default: true)
+    gofmt: true # default: true
+    goimports: true # default: true
 
 # Directories to skip entirely during file walking.
 exclude:
-  - .git
-  - node_modules
-  - vendor
+    - .git # default
+    - node_modules # default
+    - vendor # default
 
 # Path substrings — any file whose path contains a match is skipped.
 not_path:
-  - third_party/generated
+    - third_party/generated
 
 # Filename glob patterns — any file whose name matches is skipped.
 not_name:
-  - "*.pb.go"
+    - '*.pb.go'
 ```
 
-| Field                   | Type | Description                                 |
-| ----------------------- | ---- | ------------------------------------------- |
-| `rules.spacing.enabled` | bool | Toggle the spacing rule on or off           |
-| `formatters.gofmt`      | bool | Run `gofmt` after semantic rules            |
-| `formatters.goimports`  | bool | Run `goimports` after `gofmt`               |
-| `exclude`               | list | Directory names to skip during tree walking |
-| `not_path`              | list | Substring matches against full file paths   |
-| `not_name`              | list | Glob patterns matched against file names    |
+| Field                   | Type | Default                          | Description                                 |
+| ----------------------- | ---- | -------------------------------- | ------------------------------------------- |
+| `rules.spacing.enabled` | bool | `true`                           | Toggle the spacing rule on or off           |
+| `formatters.gofmt`      | bool | `true`                           | Run `gofmt` after semantic rules            |
+| `formatters.goimports`  | bool | `true`                           | Run `goimports` after `gofmt`               |
+| `exclude`               | list | `.git`, `node_modules`, `vendor` | Directory names to skip during tree walking |
+| `not_path`              | list | _(empty)_                        | Substring matches against full file paths   |
+| `not_name`              | list | _(empty)_                        | Glob patterns matched against file names    |
 
 > **Note:** `goimports` is optional at runtime. If it is not installed on the system, the engine skips that step silently — no error is raised.
 
@@ -360,23 +336,23 @@ Structured output with full details for each file. Useful for editors, dashboard
 
 ```json
 {
-  "result": "fail",
-  "files": 1,
-  "changed": 1,
-  "results": [
-    {
-      "file": "semantic/engine/engine.go",
-      "applied": ["spacing"],
-      "violations": [
-        {
-          "rule": "spacing",
-          "line": 42,
-          "message": "missing blank line before if"
-        }
-      ],
-      "changed": true
-    }
-  ]
+	"result": "fail",
+	"files": 1,
+	"changed": 1,
+	"results": [
+		{
+			"file": "semantic/engine/engine.go",
+			"applied": ["spacing"],
+			"violations": [
+				{
+					"rule": "spacing",
+					"line": 42,
+					"message": "missing blank line before if"
+				}
+			],
+			"changed": true
+		}
+	]
 }
 ```
 
@@ -386,17 +362,17 @@ Compact JSON designed for AI agents and CI pipelines. It groups changed files an
 
 ```json
 {
-  "result": "fail",
-  "summary": { "files": 1, "changed": 1, "violations": 1 },
-  "changed": [{ "file": "semantic/engine/engine.go", "steps": ["spacing"] }],
-  "violations": [
-    {
-      "file": "semantic/engine/engine.go",
-      "rule": "spacing",
-      "line": 42,
-      "message": "missing blank line before if"
-    }
-  ]
+	"result": "fail",
+	"summary": { "files": 1, "changed": 1, "violations": 1 },
+	"changed": [{ "file": "semantic/engine/engine.go", "steps": ["spacing"] }],
+	"violations": [
+		{
+			"file": "semantic/engine/engine.go",
+			"rule": "spacing",
+			"line": 42,
+			"message": "missing blank line before if"
+		}
+	]
 }
 ```
 
@@ -437,8 +413,6 @@ make help            # list all targets and variables
 pnpm turbo run check --filter=semantic   # run semantic workspace checks
 pnpm turbo run check --filter=tooling    # run tooling workspace checks
 make format          # apply Go fixes plus Oxc formatting for supported non-Go files
-make check-json      # run legacy merged checks with JSON output
-make check-agent     # run legacy merged checks with agent output
 make build           # compile a host-native binary to ./bin/fmt
 make release         # build release binaries into ./dist
 make test            # run all tests with verbose output
@@ -447,7 +421,6 @@ make test-short      # run tests in short mode
 make vet             # run go vet
 make fmt-source      # rewrite Go source formatting in the repo
 make install         # go install the CLI
-make config          # copy go-fmt.yml.example to go-fmt.yml
 make clean           # remove build artefacts and clean cache
 ```
 
@@ -456,8 +429,6 @@ make clean           # remove build artefacts and clean cache
 | Variable            | Default                                             | Description                                          |
 | ------------------- | --------------------------------------------------- | ---------------------------------------------------- |
 | `ARGS`              | `.`                                                 | Files or directories to target                       |
-| `CONFIG`            | _(empty)_                                           | Path to config file                                  |
-| `OUTPUT`            | `text`                                              | Output format for check commands                     |
 | `VERSION`           | `git describe ...` or `dev`                         | Build version injected into binaries                 |
 | `CGO_ENABLED`       | `0`                                                 | CGO setting for build and release                    |
 | `DIST_DIR`          | `dist`                                              | Directory for release binaries                       |
@@ -470,17 +441,8 @@ pnpm turbo run check --filter=semantic
 # run tooling-only checks
 pnpm turbo run check --filter=tooling
 
-# JSON output
-make check-json
-
-# agent output
-make check-agent
-
 # rewrite Go source formatting
 make fmt-source
-
-# direct Oxc-only workspace task
-pnpm --filter tooling run check
 
 # override release output directory
 make release DIST_DIR=builds
@@ -515,8 +477,7 @@ semantic/config/           YAML config loading via Viper, with defaults
 semantic/engine/           Go file collection, rule orchestration, formatter pipeline, reporting
 semantic/rules/            Rule interface contract
 semantic/rules/spacing/    Spacing semantic rule (AST-based)
-tooling/scripts/           Oxc orchestration and merged report rendering
-tooling/test/              Node-based tests for Oxc/report integration
+tooling/                   Oxc-based formatting for supported non-Go file types
 ```
 
 ### Formatting Pipeline
@@ -534,6 +495,6 @@ Each step only runs if enabled in the config. If a file is unchanged after all s
 ## Notes
 
 - The standalone formatter remains Go-native.
-- Repo-local Make targets extend that with Oxc so supported non-Go files are kept in sync without maintaining an extension allowlist.
+- Repo-local Make targets extend that with Oxc, so supported non-Go files are kept in sync without maintaining an extension allowlist.
 - The rule system is designed to be extended. New rules implement the `Rule` interface (`Name()` + `Apply()`) and are registered in the engine.
 - `goimports` is optional. If the binary is not found at runtime, that step is skipped without error.

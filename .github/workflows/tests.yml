@@ -1,58 +1,58 @@
 name: Tests
 
 on:
-  pull_request:
-    branches:
-      - main
+    pull_request:
+        branches:
+            - main
 
 jobs:
-  check:
-    runs-on: ubuntu-latest
-    strategy:
-      fail-fast: false
-      matrix:
-        workspace:
-          - semantic
-          - tooling
+    check:
+        runs-on: ubuntu-latest
+        strategy:
+            fail-fast: false
+            matrix:
+                workspace:
+                    - semantic
+                    - tooling
 
-    steps:
-      - uses: actions/checkout@v4
-        name: Checkout repository
+        steps:
+            - uses: actions/checkout@v4
+              name: Checkout repository
 
-      - uses: actions/setup-node@v4
-        name: Install Node
-        with:
-          node-version: 25
+            - uses: actions/setup-node@v4
+              name: Install Node
+              with:
+                  node-version: 25
 
-      - uses: pnpm/action-setup@v4
-        name: Install pnpm
-        with:
-          version: 10.32.1
+            - uses: pnpm/action-setup@v4
+              name: Install pnpm
+              with:
+                  version: 10.32.1
 
-      - uses: actions/setup-go@v5
-        if: matrix.workspace == 'semantic'
-        name: Install Go
-        with:
-          go-version-file: semantic/go.mod
+            - uses: actions/setup-go@v5
+              if: matrix.workspace == 'semantic'
+              name: Install Go
+              with:
+                  go-version-file: semantic/go.mod
 
-      - name: Install workspace dependencies
-        run: pnpm install --frozen-lockfile
+            - name: Install workspace dependencies
+              run: pnpm install --frozen-lockfile
 
-      - name: Check ${{ matrix.workspace }}
-        run: pnpm turbo run check --filter=${{ matrix.workspace }}
+            - name: Check ${{ matrix.workspace }}
+              run: pnpm turbo run check --filter=${{ matrix.workspace }}
 
-  test:
-    needs: check
-    runs-on: ubuntu-latest
+    test:
+        needs: check
+        runs-on: ubuntu-latest
 
-    steps:
-      - uses: actions/checkout@v4
-        name: Checkout repository
+        steps:
+            - uses: actions/checkout@v4
+              name: Checkout repository
 
-      - uses: actions/setup-go@v5
-        name: Install Go
-        with:
-          go-version-file: semantic/go.mod
+            - uses: actions/setup-go@v5
+              name: Install Go
+              with:
+                  go-version-file: semantic/go.mod
 
-      - name: Go - Run all tests with the race detector
-        run: make test-race
+            - name: Go - Run all tests with the race detector
+              run: make test-race

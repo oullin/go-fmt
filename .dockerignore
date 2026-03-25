@@ -32,7 +32,7 @@ semantic/node_modules
 .turbo
 
 # Runtime / generated
-go-fmt.yml
+config.yml
 coverage.out
 storage/
 

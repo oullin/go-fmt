@@ -1,17 +1,15 @@
 {
-  "name": "go-fmt-monorepo",
-  "private": true,
-  "scripts": {
-    "build": "pnpm --filter semantic run build",
-    "check": "node ./tooling/scripts/orchestrate.mjs check",
-    "check:tooling": "turbo run check --filter=tooling",
-    "format": "node ./tooling/scripts/orchestrate.mjs format",
-    "format:tooling": "turbo run format --filter=tooling",
-    "test": "pnpm --filter semantic run test && pnpm --filter tooling run test",
-    "vet": "pnpm --filter semantic run vet"
-  },
-  "devDependencies": {
-    "turbo": "2.5.8"
-  },
-  "packageManager": "pnpm@10.32.1"
+	"name": "go-fmt-monorepo",
+	"private": true,
+	"scripts": {
+		"build": "pnpm --filter semantic run build",
+		"format": "make format",
+		"format:tooling": "turbo run format --filter=tooling",
+		"test": "pnpm --filter semantic run test",
+		"vet": "pnpm --filter semantic run vet"
+	},
+	"devDependencies": {
+		"turbo": "2.5.8"
+	},
+	"packageManager": "pnpm@10.32.1"
 }

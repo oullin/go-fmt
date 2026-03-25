@@ -1,20 +1,20 @@
 {
-  "$schema": "https://turbo.build/schema.json",
-  "tasks": {
-    "build": {
-      "cache": false
-    },
-    "check": {
-      "cache": false
-    },
-    "format": {
-      "cache": false
-    },
-    "test": {
-      "outputs": []
-    },
-    "vet": {
-      "outputs": []
-    }
-  }
+	"$schema": "https://turbo.build/schema.json",
+	"tasks": {
+		"build": {
+			"cache": false
+		},
+		"check": {
+			"cache": false
+		},
+		"format": {
+			"cache": false
+		},
+		"test": {
+			"outputs": []
+		},
+		"vet": {
+			"outputs": []
+		}
+	}
 }

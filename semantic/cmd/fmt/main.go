@@ -6,12 +6,12 @@ import (
 	"io"
 	"os"
 
-	"github.com/oullin/go-fmt/config"
-	"github.com/oullin/go-fmt/engine"
-	"github.com/oullin/go-fmt/formatter"
-	"github.com/oullin/go-fmt/report"
-	"github.com/oullin/go-fmt/rules"
-	"github.com/oullin/go-fmt/rules/spacing"
+	"github.com/oullin/go-fmt/semantic/config"
+	"github.com/oullin/go-fmt/semantic/engine"
+	"github.com/oullin/go-fmt/semantic/formatter"
+	"github.com/oullin/go-fmt/semantic/report"
+	"github.com/oullin/go-fmt/semantic/rules"
+	"github.com/oullin/go-fmt/semantic/rules/spacing"
 )
 
 var version = "dev"
@@ -53,6 +53,7 @@ func runCommand(mode string, args []string, stdout, stderr io.Writer) int {
 	fs.SetOutput(stderr)
 
 	configPath := fs.String("config", "", "Path to go-fmt YAML config")
+	reportRoot := fs.String("cwd", "", "Path used for config discovery and report-relative file paths")
 	outputFormat := fs.String("format", "text", "Output format: text, json, agent")
 
 	if err := fs.Parse(args); err != nil {
@@ -65,6 +66,10 @@ func runCommand(mode string, args []string, stdout, stderr io.Writer) int {
 		fmt.Fprintf(stderr, "resolve cwd: %v\n", err)
 
 		return 1
+	}
+
+	if *reportRoot != "" {
+		cwd = *reportRoot
 	}
 
 	cfg, err := config.Load(cwd, *configPath)

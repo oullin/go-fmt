@@ -1,4 +1,4 @@
-module github.com/oullin/go-fmt
+module github.com/oullin/go-fmt/semantic
 
 go 1.25.0
 

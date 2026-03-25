@@ -9,7 +9,7 @@ import (
 	"github.com/spf13/viper"
 )
 
-const DefaultFileName = "go-fmt.yml"
+const DefaultFileName = "config.yml"
 
 func Load(cwd, explicitPath string) (Config, error) {
 	cfg := Default()

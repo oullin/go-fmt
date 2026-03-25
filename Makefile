@@ -1,106 +1,87 @@
 SHELL := /bin/bash
+.DEFAULT_GOAL := help
 
 APP := fmt
 CMD := ./cmd/fmt
-BUILD_DIR := builds
+GO_WORKDIR := semantic
+BUILD_DIR := bin
 BIN := $(BUILD_DIR)/$(APP)
-ARGS ?= .
-CONFIG ?=
-OUTPUT ?= text
-GOIMPORTS := golang.org/x/tools/cmd/goimports@latest
-DIST_DIR := dist
-VERSION ?= $(shell git describe --tags --always --dirty 2>/dev/null || echo dev)
+OXFMT_BIN := tooling/node_modules/.bin/oxfmt
 
-.PHONY: help run check format check-json check-agent config build release test test-race test-short vet lint install install-tools clean
+ARGS ?= . ## Files or directories to target
+VERSION ?= $(shell git describe --tags --always --dirty 2>/dev/null || echo dev) ## Build version injected into binaries
+CGO_ENABLED ?= 0 ## CGO setting used for build and release
+DIST_DIR ?= dist ## Directory for release binaries
+RELEASE_PLATFORMS ?= darwin/amd64 darwin/arm64 linux/amd64 linux/arm64 ## Space-separated GOOS/GOARCH release targets
 
-help:
-	@echo "go-fmt developer targets"
-	@echo ""
-	@echo "Usage:"
-	@echo "  make run"
-	@echo "  make check"
-	@echo "  make format"
-	@echo "  make check ARGS=./rules/spacing/spacing.go"
-	@echo "  make format ARGS=./rules/spacing/spacing.go"
-	@echo "  make check-json"
-	@echo "  make check-agent"
-	@echo "  make config"
-	@echo "  make build"
-	@echo "  make release"
-	@echo "  make test"
-	@echo ""
-	@echo "Variables:"
-	@echo "  ARGS=$(ARGS)"
-	@echo "  CONFIG=$(CONFIG)"
-	@echo "  OUTPUT=$(OUTPUT)"
+.PHONY: help format build release test test-race test-short vet fmt-source install clean
 
-run:
-	go run $(CMD) --help
+help: ## Show available targets and override variables
+	@awk '\
+		BEGIN { \
+			FS = "## "; \
+		} \
+		function trim(value) { \
+			gsub(/^[[:space:]]+|[[:space:]]+$$/, "", value); \
+			return value; \
+		} \
+		/^[a-zA-Z0-9_.-]+:.*## / { \
+			split($$1, parts, ":"); \
+			targets[++target_count] = sprintf("  %-14s %s", parts[1], $$2); \
+			next; \
+		} \
+		/^[A-Z_][A-Z0-9_]*[[:space:]]*\?*=.*## / { \
+			split($$1, parts, "\\?="); \
+			vars[++var_count] = sprintf("  %-18s %-24s %s", trim(parts[1]), trim(parts[2]), $$2); \
+		} \
+		END { \
+			printf "go-fmt developer targets\n\nTargets:\n"; \
+			for (i = 1; i <= target_count; i++) { \
+				print targets[i]; \
+			} \
+			if (var_count) { \
+				printf "\nVariables:\n"; \
+				for (i = 1; i <= var_count; i++) { \
+					print vars[i]; \
+				} \
+			} \
+		} \
+	' $(MAKEFILE_LIST)
+	@printf "\nExamples:\n"
+	@printf "  pnpm turbo run check --filter=semantic\n"
+	@printf "  pnpm turbo run check --filter=tooling\n"
+	@printf "  make fmt-source\n"
 
-check:
-	go run $(CMD) check $(if $(CONFIG),--config $(CONFIG),) --format $(OUTPUT) $(ARGS)
+format: ## Apply formatter changes to ARGS
+	@go -C $(GO_WORKDIR) run $(CMD) format --cwd . $(ARGS)
+	@git ls-files --cached --others --exclude-standard -z | xargs -0 $(OXFMT_BIN) --write --no-error-on-unmatched-pattern
 
-format:
-	go run $(CMD) format $(if $(CONFIG),--config $(CONFIG),) --format $(OUTPUT) $(ARGS)
+build: ## Build a host-native binary into ./bin
+	@VERSION='$(strip $(VERSION))' ./scripts/build.sh
 
-check-json:
-	go run $(CMD) check $(if $(CONFIG),--config $(CONFIG),) --format json $(ARGS)
+release: ## Build release binaries into $(DIST_DIR)
+	@VERSION='$(strip $(VERSION))' DIST_DIR='$(strip $(DIST_DIR))' RELEASE_PLATFORMS='$(strip $(RELEASE_PLATFORMS))' ./scripts/release.sh
 
-check-agent:
-	go run $(CMD) check $(if $(CONFIG),--config $(CONFIG),) --format agent $(ARGS)
+test: ## Run all tests with verbose output
+	pnpm test
 
-config:
-	cp -n go-fmt.yml.example go-fmt.yml || true
-	@echo "config ready at ./go-fmt.yml"
+test-race: ## Run all tests with the race detector
+	go -C $(GO_WORKDIR) test ./... -race -v
 
-build:
-	mkdir -p $(BUILD_DIR)
-	go build -ldflags "-X main.version=$$(git describe --tags --always --dirty 2>/dev/null || echo dev)" -o $(BIN) $(CMD)
+test-short: ## Run tests in short mode
+	go -C $(GO_WORKDIR) test ./... -short
 
-release:
-	mkdir -p $(DIST_DIR)
-	@for platform in darwin/amd64 darwin/arm64 linux/amd64 linux/arm64; do \
-		GOOS=$${platform%/*}; \
-		GOARCH=$${platform#*/}; \
-		output="$(DIST_DIR)/$(APP)-$${GOOS}-$${GOARCH}"; \
-		case $${GOOS} in \
-			darwin) os_label="macOS" ;; \
-			linux)  os_label="Linux" ;; \
-			*)      os_label=$${GOOS} ;; \
-		esac; \
-		case $${GOARCH} in \
-			amd64) arch_label="Intel" ;; \
-			arm64) arch_label="Apple Silicon" ;; \
-			*)     arch_label=$${GOARCH} ;; \
-		esac; \
-		echo "Building $${os_label} $${arch_label} ($${GOOS}/$${GOARCH})..."; \
-		GOOS=$${GOOS} GOARCH=$${GOARCH} go build -ldflags "-X main.version=$(VERSION)" -o "$${output}" $(CMD); \
-	done
+vet: ## Run go vet across the module
+	pnpm vet
 
-test:
-	go test ./... -v
+fmt-source: ## Rewrite Go source formatting in the repository
+	@./scripts/fmt-source.sh
 
-test-race:
-	go test ./... -race -v
+install: ## Install the CLI with go install
+	go -C $(GO_WORKDIR) install $(CMD)
 
-test-short:
-	go test ./... -short
-
-vet:
-	go vet ./...
-
-lint:
-	gofmt -w .
-	go test ./...
-	go vet ./...
-
-install:
-	go install $(CMD)
-
-install-tools:
-	go install $(GOIMPORTS)
-
-clean:
+clean: ## Remove build artifacts and clean the Go cache
 	rm -f $(BIN)
 	rm -rf $(DIST_DIR)
-	go clean -cache
+	rm -rf .turbo node_modules tooling/node_modules semantic/node_modules
+	go -C $(GO_WORKDIR) clean -cache

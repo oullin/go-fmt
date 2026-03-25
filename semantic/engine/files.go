@@ -7,7 +7,7 @@ import (
 	"slices"
 	"strings"
 
-	"github.com/oullin/go-fmt/config"
+	"github.com/oullin/go-fmt/semantic/config"
 )
 
 func CollectGoFiles(paths []string, cfg config.Config) ([]string, error) {

@@ -32,6 +32,7 @@ func Default() Config {
 		},
 		Exclude: []string{
 			".git",
+			"node_modules",
 			"vendor",
 		},
 		NotPath: []string{},

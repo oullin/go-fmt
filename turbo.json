@@ -1,0 +1,20 @@
+{
+	"$schema": "https://turbo.build/schema.json",
+	"tasks": {
+		"build": {
+			"outputs": []
+		},
+		"check": {
+			"outputs": []
+		},
+		"format": {
+			"outputs": []
+		},
+		"test": {
+			"outputs": []
+		},
+		"vet": {
+			"outputs": []
+		}
+	}
+}

@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"io"
 
-	"github.com/oullin/go-fmt/engine"
+	"github.com/oullin/go-fmt/semantic/engine"
 )
 
 type agentReport struct {

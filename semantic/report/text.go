@@ -5,7 +5,7 @@ import (
 	"io"
 	"strings"
 
-	"github.com/oullin/go-fmt/engine"
+	"github.com/oullin/go-fmt/semantic/engine"
 )
 
 func RenderText(w io.Writer, cwd, mode string, report engine.Report) {

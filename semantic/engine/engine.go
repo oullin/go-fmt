@@ -5,9 +5,9 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/oullin/go-fmt/config"
-	"github.com/oullin/go-fmt/formatter"
-	"github.com/oullin/go-fmt/rules"
+	"github.com/oullin/go-fmt/semantic/config"
+	"github.com/oullin/go-fmt/semantic/formatter"
+	"github.com/oullin/go-fmt/semantic/rules"
 )
 
 type Engine struct {

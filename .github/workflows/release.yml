@@ -37,6 +37,7 @@ jobs:
               if: matrix.workspace == 'semantic'
               with:
                   go-version-file: semantic/go.mod
+                  cache-dependency-path: semantic/go.sum
 
             - name: Install workspace dependencies
               run: pnpm install --frozen-lockfile
@@ -54,6 +55,7 @@ jobs:
             - uses: actions/setup-go@v5
               with:
                   go-version-file: semantic/go.mod
+                  cache-dependency-path: semantic/go.sum
 
             - name: Go - Run all tests with the race detector
               run: make test-race

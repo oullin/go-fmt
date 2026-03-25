@@ -97,6 +97,105 @@ func run() {
 	}
 }
 
+func TestRunCheckWithHostPath(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "sample.go")
+	mustWrite(t, path, `package sample
+
+func run() {
+	if true {
+		println("ok")
+	}
+	println("next")
+}
+`)
+	t.Setenv(hostRootEnv, dir)
+
+	exitCode, stdout, stderr := runCLI(t, dir, "check", "--host-path", path)
+
+	if exitCode != 1 {
+		t.Fatalf("expected exit code 1, got %d", exitCode)
+	}
+
+	if !strings.Contains(stdout, "Result: fail") {
+		t.Fatalf("unexpected stdout:\n%s", stdout)
+	}
+
+	if stderr != "" {
+		t.Fatalf("unexpected stderr:\n%s", stderr)
+	}
+}
+
+func TestRunFormatWithHostPath(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "sample.go")
+	mustWrite(t, path, `package sample
+
+func run() {
+	defer println("done")
+	return
+}
+`)
+	t.Setenv(hostRootEnv, dir)
+
+	exitCode, stdout, stderr := runCLI(t, dir, "format", "--host-path", path)
+
+	if exitCode != 0 {
+		t.Fatalf("expected exit code 0, got %d", exitCode)
+	}
+
+	if !strings.Contains(stdout, "Result: fixed") {
+		t.Fatalf("unexpected stdout:\n%s", stdout)
+	}
+
+	if stderr != "" {
+		t.Fatalf("unexpected stderr:\n%s", stderr)
+	}
+
+	content, err := os.ReadFile(path)
+
+	if err != nil {
+		t.Fatalf("read file: %v", err)
+	}
+
+	if !strings.Contains(string(content), "defer println(\"done\")\n\n\treturn") {
+		t.Fatalf("expected formatted file, got:\n%s", content)
+	}
+}
+
+func TestRunWithHostPathRequiresEnv(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "sample.go")
+	mustWrite(t, path, "package sample\n")
+
+	exitCode, _, stderr := runCLI(t, dir, "check", "--host-path", path)
+
+	if exitCode != 1 {
+		t.Fatalf("expected exit code 1, got %d", exitCode)
+	}
+
+	if !strings.Contains(stderr, hostRootEnv) {
+		t.Fatalf("unexpected stderr:\n%s", stderr)
+	}
+}
+
+func TestRunWithHostPathRejectsPositionalPaths(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "sample.go")
+	mustWrite(t, path, "package sample\n")
+	t.Setenv(hostRootEnv, dir)
+
+	exitCode, _, stderr := runCLI(t, dir, "check", "--host-path", path, dir)
+
+	if exitCode != 1 {
+		t.Fatalf("expected exit code 1, got %d", exitCode)
+	}
+
+	if !strings.Contains(stderr, "cannot be used with positional paths") {
+		t.Fatalf("unexpected stderr:\n%s", stderr)
+	}
+}
+
 func runCLI(t *testing.T, workdir string, args ...string) (int, string, string) {
 	t.Helper()
 

@@ -55,18 +55,21 @@ func runCommand(mode string, args []string, stdout, stderr io.Writer) int {
 	configPath := fs.String("config", "", "Path to go-fmt YAML config")
 	reportRoot := fs.String("cwd", "", "Path used for config discovery and report-relative file paths")
 	outputFormat := fs.String("format", "text", "Output format: text, json, agent")
+	hostPath := fs.String("host-path", "", "Absolute host path under GO_FMT_HOST_ROOT to check or format")
 
 	if err := fs.Parse(args); err != nil {
 		return 1
 	}
 
-	cwd, err := os.Getwd()
+	workRoot, err := os.Getwd()
 
 	if err != nil {
 		fmt.Fprintf(stderr, "resolve cwd: %v\n", err)
 
 		return 1
 	}
+
+	cwd := workRoot
 
 	if *reportRoot != "" {
 		cwd = *reportRoot
@@ -96,7 +99,14 @@ func runCommand(mode string, args []string, stdout, stderr io.Writer) int {
 		ff = append(ff, formatter.NewGoimports())
 	}
 
-	runPaths := fs.Args()
+	runPaths, err := resolveRunPaths(workRoot, *hostPath, fs.Args())
+
+	if err != nil {
+		fmt.Fprintf(stderr, "%v\n", err)
+
+		return 1
+	}
+
 	fixer := engine.New(cfg, rr, ff)
 
 	var result engine.Report
@@ -136,6 +146,6 @@ func runCommand(mode string, args []string, stdout, stderr io.Writer) int {
 }
 
 func printUsage(w io.Writer) {
-	fmt.Fprintln(w, "fmt check [paths...]")
-	fmt.Fprintln(w, "fmt format [paths...]")
+	fmt.Fprintln(w, "fmt check [--host-path /absolute/host/path] [paths...]")
+	fmt.Fprintln(w, "fmt format [--host-path /absolute/host/path] [paths...]")
 }

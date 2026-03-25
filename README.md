@@ -4,7 +4,7 @@
 
 `go-fmt` goes beyond `gofmt`. It applies rule-based semantic formatting — enforcing blank-line boundaries around control flow, ensuring type declarations appear at the top of the file, and normalising spacing around `var`, `defer`, and `return` — then finishes with `gofmt` and `goimports`. The result is consistently styled Go, whether the code was written by a person, an agent, or a code generator.
 
-The project ships as a **reusable engine** and a **standalone CLI** (`fmt`). Rules run first; formatters run second — giving you deterministic, layered formatting in a single pass. The repository itself is now a small Turborepo: the Go formatter lives in the `semantic` workspace, while the `tooling` workspace owns Oxc-based formatting for every supported non-Go file type.
+The project ships as a **reusable engine** and a **standalone CLI** (`fmt`). Rules run first; formatters run second — giving you deterministic, layered formatting in a single pass. The repository itself is a small Turborepo: the Go formatter lives in the `semantic` workspace, while the `tooling` workspace owns Oxc-based formatting for every supported non-Go file type.
 
 ---
 
@@ -13,6 +13,7 @@ The project ships as a **reusable engine** and a **standalone CLI** (`fmt`). Rul
 - [Highlights](#highlights)
 - [Quick Start](#quick-start)
 - [Installation](#installation)
+- [Running with Docker](#running-with-docker)
 - [CLI](#cli)
 - [Configuration](#configuration)
 - [Spacing Rule](#spacing-rule)
@@ -36,7 +37,14 @@ The project ships as a **reusable engine** and a **standalone CLI** (`fmt`). Rul
 
 ## Quick Start
 
-If you already have Go installed, the fastest way to try `go-fmt` is:
+The fastest way to try `go-fmt` with Docker — no local install required:
+
+```bash
+docker run --rm -v "$PWD":/work -w /work ghcr.io/oullin/go-fmt:latest check .
+docker run --rm -v "$PWD":/work -w /work ghcr.io/oullin/go-fmt:latest format .
+```
+
+With Go installed locally:
 
 ```bash
 go install github.com/oullin/go-fmt/semantic/cmd/fmt@latest
@@ -44,40 +52,11 @@ fmt check .
 fmt format .
 ```
 
-If you prefer not to install a local binary, run it with Docker:
-
-```bash
-docker run --rm -u "$(id -u):$(id -g)" -v "$PWD":/work -w /work ghcr.io/oullin/go-fmt:latest check .
-docker run --rm -u "$(id -u):$(id -g)" -v "$PWD":/work -w /work ghcr.io/oullin/go-fmt:latest format .
-```
-
-If you prefer a reusable Compose file, download [`examples/consumer/go-fmt.compose.yaml`](./examples/consumer/go-fmt.compose.yaml) and run:
-
-```bash
-docker compose -f /path/to/go-fmt.compose.yaml --project-directory "$PWD" run --rm -u "$(id -u):$(id -g)" go-fmt check --host-path "$PWD"
-docker compose -f /path/to/go-fmt.compose.yaml --project-directory "$PWD" run --rm -u "$(id -u):$(id -g)" go-fmt format --host-path "$PWD"
-```
-
-To run from the repo without installing anything:
-
-```bash
-go run ./semantic/cmd/fmt check .
-go run ./semantic/cmd/fmt format .
-```
-
 ---
 
 ## Installation
 
-`go-fmt` can be used as a local binary, a source build, or a container.
-
-| Method       | Best for                | Command                                                                                                |
-| ------------ | ----------------------- | ------------------------------------------------------------------------------------------------------ |
-| `go install` | regular local CLI usage | `go install github.com/oullin/go-fmt/semantic/cmd/fmt@latest`                                          |
-| `make build` | working from the repo   | `make build`                                                                                           |
-| Docker       | no local binary install | `docker run --rm -u "$(id -u):$(id -g)" -v "$PWD":/work -w /work ghcr.io/oullin/go-fmt:latest check .` |
-
-### Option 1: Install with Go
+### Install with Go
 
 Requires Go 1.25 or newer.
 
@@ -97,7 +76,7 @@ Verify the installation:
 fmt version
 ```
 
-### Option 2: Build Locally
+### Build Locally
 
 Build a host-native binary into `./bin/fmt` from this repository:
 
@@ -113,38 +92,51 @@ make install
 fmt version
 ```
 
-### Option 3: Use Docker
+### Run from Source
 
-If you do not want to install the binary locally, run the published container image directly:
-
-```bash
-docker run --rm -u "$(id -u):$(id -g)" -v "$PWD":/work -w /work ghcr.io/oullin/go-fmt:latest check .
-docker run --rm -u "$(id -u):$(id -g)" -v "$PWD":/work -w /work ghcr.io/oullin/go-fmt:latest format .
-```
-
-On macOS, this runs as a Linux container via Docker Desktop rather than as a native trusted macOS binary.
-
-### Option 4: Use Docker Compose
-
-If you want one reusable Compose file that you can download and use across projects, use [`examples/consumer/go-fmt.compose.yaml`](./examples/consumer/go-fmt.compose.yaml).
-
-If you copy the file into a project root:
+No installation needed — run directly from the repository:
 
 ```bash
-docker compose -f go-fmt.compose.yaml run --rm -u "$(id -u):$(id -g)" go-fmt check --host-path "$PWD"
-docker compose -f go-fmt.compose.yaml run --rm -u "$(id -u):$(id -g)" go-fmt format --host-path "$PWD"
+go run ./semantic/cmd/fmt check .
+go run ./semantic/cmd/fmt format .
 ```
 
-If you keep the file somewhere central and reuse it from other projects, run the command from the target project root and set `--project-directory "$PWD"` so `.` binds the current project instead of the directory that stores the Compose file:
+---
+
+## Running with Docker
+
+The `go-fmt` image is published to `ghcr.io/oullin/go-fmt` and is publicly available — no authentication required. The image supports `linux/amd64` and `linux/arm64`.
+
+On macOS, this runs as a Linux container via Docker Desktop.
+
+### Direct Docker Run
+
+Run the published container image against your current directory:
 
 ```bash
-docker compose -f /path/to/go-fmt.compose.yaml --project-directory "$PWD" run --rm -u "$(id -u):$(id -g)" go-fmt check --host-path "$PWD/pkg/api"
-docker compose -f /path/to/go-fmt.compose.yaml --project-directory "$PWD" run --rm -u "$(id -u):$(id -g)" go-fmt format --host-path "$PWD/pkg/api"
+docker run --rm -v "$PWD":/work -w /work ghcr.io/oullin/go-fmt:latest check .
+docker run --rm -v "$PWD":/work -w /work ghcr.io/oullin/go-fmt:latest format .
 ```
 
-The consumer Compose file mounts the caller's current directory to `/work` and exports `HOST_PROJECT_PATH=${PWD}` so `--host-path` can map host paths back to the mounted tree. Paths outside the caller's current directory are intentionally rejected.
+Running without a subcommand prints the help menu:
 
-The downloadable consumer Compose file is intentionally minimal:
+```bash
+docker run --rm ghcr.io/oullin/go-fmt:latest
+```
+
+### Docker Compose
+
+The recommended way to integrate `go-fmt` into a project is with a Compose file. This keeps the command short and the configuration reusable.
+
+#### Adding go-fmt to Your Project
+
+Download the example Compose file into your project:
+
+```bash
+curl -o go-fmt.compose.yaml https://raw.githubusercontent.com/oullin/go-fmt/main/examples/consumer/go-fmt.compose.yaml
+```
+
+The Compose file is intentionally minimal:
 
 ```yaml
 services:
@@ -157,6 +149,59 @@ services:
             HOST_PROJECT_PATH: ${PWD}
         command: ['help']
 ```
+
+It mounts the caller's current directory to `/work` inside the container and sets `HOST_PROJECT_PATH` so `--host-path` can map host paths back to the mounted tree.
+
+#### Running the Formatter
+
+The default command is `help`. To see available commands and flags, run:
+
+```bash
+docker compose -f go-fmt.compose.yaml run --rm go-fmt
+```
+
+Override the default command with `check` or `format` to run the formatter:
+
+```bash
+docker compose -f go-fmt.compose.yaml run --rm go-fmt check .
+docker compose -f go-fmt.compose.yaml run --rm go-fmt format .
+```
+
+The `--rm` flag removes the container automatically after it exits.
+
+#### Using a Project-Local Compose File
+
+If your project already includes a Compose file with a `go-fmt` service (for example, `api/docker.api.compose.yaml`), run it the same way:
+
+```bash
+# View available commands
+docker compose -f api/docker.api.compose.yaml run --rm go-fmt
+
+# Check for violations without writing changes
+docker compose -f api/docker.api.compose.yaml run --rm go-fmt check .
+
+# Fix violations and write changes to disk
+docker compose -f api/docker.api.compose.yaml run --rm go-fmt format .
+```
+
+This spins up the `ghcr.io/oullin/go-fmt:latest` container, mounts your working directory into `/work`, runs the formatter against your codebase, and cleans up the container when done.
+
+#### Sharing a Compose File Across Projects
+
+If you keep the Compose file somewhere central and reuse it from other projects, pass `--project-directory "$PWD"` so the volume mount binds the current project instead of the directory that stores the Compose file:
+
+```bash
+docker compose -f /path/to/go-fmt.compose.yaml --project-directory "$PWD" run --rm go-fmt check .
+docker compose -f /path/to/go-fmt.compose.yaml --project-directory "$PWD" run --rm go-fmt format .
+```
+
+To target a subdirectory with `--host-path`:
+
+```bash
+docker compose -f /path/to/go-fmt.compose.yaml --project-directory "$PWD" run --rm go-fmt format --host-path "$PWD/pkg/api"
+```
+
+Paths outside the caller's current directory are intentionally rejected.
 
 ---
 
@@ -246,8 +291,6 @@ not_name:
 | `exclude`               | list | `.git`, `node_modules`, `vendor` | Directory names to skip during tree walking |
 | `not_path`              | list | _(empty)_                        | Substring matches against full file paths   |
 | `not_name`              | list | _(empty)_                        | Glob patterns matched against file names    |
-
-> **Note:** `goimports` is optional at runtime. If it is not installed on the system, the engine skips that step silently — no error is raised.
 
 ---
 
@@ -444,7 +487,6 @@ Compact JSON designed for AI agents and CI pipelines. It groups changed files an
 
 - Go 1.25 or newer
 - Node.js with `pnpm` for repo-local `make` and Turbo workflows
-- `goimports` (optional, for the import formatting step)
 - Docker Desktop or another Docker runtime if you use the published container image
 
 Install workspace dependencies before using the repo-local tasks:
@@ -502,29 +544,13 @@ make release DIST_DIR=builds
 
 ### Docker Distribution
 
-The published package for `go-fmt` is the multi-arch container image `ghcr.io/oullin/go-fmt`. The release workflow:
+The published package for `go-fmt` is the multi-arch container image `ghcr.io/oullin/go-fmt`. The image is public — no authentication is required to pull it. The release workflow:
 
 - runs tests on every release build
 - creates the next Git tag and GitHub release
 - publishes `ghcr.io/oullin/go-fmt:latest`
 - publishes `ghcr.io/oullin/go-fmt:<tag>`
 - pushes a multi-arch image for `linux/amd64` and `linux/arm64`
-
-Use the published image against your current repository like this:
-
-```bash
-docker run --rm -u "$(id -u):$(id -g)" -v "$PWD":/work -w /work ghcr.io/oullin/go-fmt:latest check .
-docker run --rm -u "$(id -u):$(id -g)" -v "$PWD":/work -w /work ghcr.io/oullin/go-fmt:latest format .
-```
-
-If you prefer a reusable Compose file, download [`examples/consumer/go-fmt.compose.yaml`](./examples/consumer/go-fmt.compose.yaml) and invoke it from the target project root:
-
-```bash
-docker compose -f /path/to/go-fmt.compose.yaml --project-directory "$PWD" run --rm -u "$(id -u):$(id -g)" go-fmt check --host-path "$PWD"
-docker compose -f /path/to/go-fmt.compose.yaml --project-directory "$PWD" run --rm -u "$(id -u):$(id -g)" go-fmt format --host-path "$PWD"
-```
-
-`docker run ghcr.io/oullin/go-fmt:latest` defaults to `help`, so it prints usage if you do not pass a subcommand.
 
 ---
 
@@ -556,4 +582,3 @@ Each step only runs if enabled in the config. If a file is unchanged after all s
 - The standalone formatter remains Go-native.
 - Repo-local Make targets extend that with Oxc, so supported non-Go files are kept in sync without maintaining an extension allowlist.
 - The rule system is designed to be extended. New rules implement the `Rule` interface (`Name()` + `Apply()`) and are registered in the engine.
-- `goimports` is optional. If the binary is not found at runtime, that step is skipped without error.

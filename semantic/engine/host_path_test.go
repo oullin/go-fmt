@@ -1,19 +1,21 @@
-package main
+package engine_test
 
 import (
 	"path/filepath"
 	"testing"
+
+	"github.com/oullin/go-fmt/semantic/engine"
 )
 
 func TestResolveRunPathsRootMapsToWorkRoot(t *testing.T) {
 	workRoot := filepath.Join(string(filepath.Separator), "work")
 	hostRoot := filepath.Join(string(filepath.Separator), "host", "project")
-	t.Setenv(hostRootEnv, hostRoot)
+	t.Setenv(engine.HostRootEnv, hostRoot)
 
-	paths, err := resolveRunPaths(workRoot, hostRoot, nil)
+	paths, err := engine.HostPath(hostRoot).Resolve(workRoot, nil)
 
 	if err != nil {
-		t.Fatalf("resolveRunPaths: %v", err)
+		t.Fatalf("resolve host path: %v", err)
 	}
 
 	if len(paths) != 1 || paths[0] != workRoot {
@@ -25,12 +27,12 @@ func TestResolveRunPathsNestedDirectoryMapsToWorkRoot(t *testing.T) {
 	workRoot := filepath.Join(string(filepath.Separator), "work")
 	hostRoot := filepath.Join(string(filepath.Separator), "host", "project")
 	hostPath := filepath.Join(hostRoot, "pkg", "api")
-	t.Setenv(hostRootEnv, hostRoot)
+	t.Setenv(engine.HostRootEnv, hostRoot)
 
-	paths, err := resolveRunPaths(workRoot, hostPath, nil)
+	paths, err := engine.HostPath(hostPath).Resolve(workRoot, nil)
 
 	if err != nil {
-		t.Fatalf("resolveRunPaths: %v", err)
+		t.Fatalf("resolve host path: %v", err)
 	}
 
 	want := filepath.Join(workRoot, "pkg", "api")
@@ -44,12 +46,12 @@ func TestResolveRunPathsSingleFileMapsToWorkRoot(t *testing.T) {
 	workRoot := filepath.Join(string(filepath.Separator), "work")
 	hostRoot := filepath.Join(string(filepath.Separator), "host", "project")
 	hostPath := filepath.Join(hostRoot, "pkg", "api", "sample.go")
-	t.Setenv(hostRootEnv, hostRoot)
+	t.Setenv(engine.HostRootEnv, hostRoot)
 
-	paths, err := resolveRunPaths(workRoot, hostPath, nil)
+	paths, err := engine.HostPath(hostPath).Resolve(workRoot, nil)
 
 	if err != nil {
-		t.Fatalf("resolveRunPaths: %v", err)
+		t.Fatalf("resolve host path: %v", err)
 	}
 
 	want := filepath.Join(workRoot, "pkg", "api", "sample.go")
@@ -63,9 +65,9 @@ func TestResolveRunPathsRejectsOutsideRoot(t *testing.T) {
 	workRoot := filepath.Join(string(filepath.Separator), "work")
 	hostRoot := filepath.Join(string(filepath.Separator), "host", "project")
 	hostPath := filepath.Join(string(filepath.Separator), "host", "other")
-	t.Setenv(hostRootEnv, hostRoot)
+	t.Setenv(engine.HostRootEnv, hostRoot)
 
-	_, err := resolveRunPaths(workRoot, hostPath, nil)
+	_, err := engine.HostPath(hostPath).Resolve(workRoot, nil)
 
 	if err == nil {
 		t.Fatal("expected error")
@@ -75,9 +77,9 @@ func TestResolveRunPathsRejectsOutsideRoot(t *testing.T) {
 func TestResolveRunPathsRejectsMissingHostRoot(t *testing.T) {
 	workRoot := filepath.Join(string(filepath.Separator), "work")
 	hostPath := filepath.Join(string(filepath.Separator), "host", "project")
-	t.Setenv(hostRootEnv, "")
+	t.Setenv(engine.HostRootEnv, "")
 
-	_, err := resolveRunPaths(workRoot, hostPath, nil)
+	_, err := engine.HostPath(hostPath).Resolve(workRoot, nil)
 
 	if err == nil {
 		t.Fatal("expected error")
@@ -87,9 +89,9 @@ func TestResolveRunPathsRejectsMissingHostRoot(t *testing.T) {
 func TestResolveRunPathsRejectsPositionalPaths(t *testing.T) {
 	workRoot := filepath.Join(string(filepath.Separator), "work")
 	hostRoot := filepath.Join(string(filepath.Separator), "host", "project")
-	t.Setenv(hostRootEnv, hostRoot)
+	t.Setenv(engine.HostRootEnv, hostRoot)
 
-	_, err := resolveRunPaths(workRoot, hostRoot, []string{"."})
+	_, err := engine.HostPath(hostRoot).Resolve(workRoot, []string{"."})
 
 	if err == nil {
 		t.Fatal("expected error")

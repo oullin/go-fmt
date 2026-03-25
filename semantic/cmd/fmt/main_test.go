@@ -5,6 +5,8 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/oullin/go-fmt/semantic/engine"
 )
 
 func TestRunCheckFailsOnStyleChanges(t *testing.T) {
@@ -109,7 +111,7 @@ func run() {
 	println("next")
 }
 `)
-	t.Setenv(hostRootEnv, dir)
+	t.Setenv(engine.HostRootEnv, dir)
 
 	exitCode, stdout, stderr := runCLI(t, dir, "check", "--host-path", path)
 
@@ -136,7 +138,7 @@ func run() {
 	return
 }
 `)
-	t.Setenv(hostRootEnv, dir)
+	t.Setenv(engine.HostRootEnv, dir)
 
 	exitCode, stdout, stderr := runCLI(t, dir, "format", "--host-path", path)
 
@@ -174,7 +176,7 @@ func TestRunWithHostPathRequiresEnv(t *testing.T) {
 		t.Fatalf("expected exit code 1, got %d", exitCode)
 	}
 
-	if !strings.Contains(stderr, hostRootEnv) {
+	if !strings.Contains(stderr, engine.HostRootEnv) {
 		t.Fatalf("unexpected stderr:\n%s", stderr)
 	}
 }
@@ -183,7 +185,7 @@ func TestRunWithHostPathRejectsPositionalPaths(t *testing.T) {
 	dir := t.TempDir()
 	path := filepath.Join(dir, "sample.go")
 	mustWrite(t, path, "package sample\n")
-	t.Setenv(hostRootEnv, dir)
+	t.Setenv(engine.HostRootEnv, dir)
 
 	exitCode, _, stderr := runCLI(t, dir, "check", "--host-path", path, dir)
 

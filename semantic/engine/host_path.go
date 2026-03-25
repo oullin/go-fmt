@@ -1,4 +1,4 @@
-package main
+package engine
 
 import (
 	"fmt"
@@ -7,9 +7,13 @@ import (
 	"strings"
 )
 
-const hostRootEnv = "HOST_PROJECT_PATH"
+type HostPath string
 
-func resolveRunPaths(workRoot, hostPath string, positional []string) ([]string, error) {
+const HostRootEnv = "HOST_PROJECT_PATH"
+
+func (h HostPath) Resolve(workRoot string, positional []string) ([]string, error) {
+	hostPath := string(h)
+
 	if hostPath == "" {
 		return positional, nil
 	}
@@ -22,16 +26,16 @@ func resolveRunPaths(workRoot, hostPath string, positional []string) ([]string, 
 		return nil, fmt.Errorf("--host-path must be an absolute path")
 	}
 
-	hostRoot, ok := os.LookupEnv(hostRootEnv)
+	hostRoot, ok := os.LookupEnv(HostRootEnv)
 
 	if !ok || strings.TrimSpace(hostRoot) == "" {
-		return nil, fmt.Errorf("--host-path requires %s to be set", hostRootEnv)
+		return nil, fmt.Errorf("--host-path requires %s to be set", HostRootEnv)
 	}
 
 	hostRootAbs, err := filepath.Abs(hostRoot)
 
 	if err != nil {
-		return nil, fmt.Errorf("resolve %s: %w", hostRootEnv, err)
+		return nil, fmt.Errorf("resolve %s: %w", HostRootEnv, err)
 	}
 
 	hostPathAbs, err := filepath.Abs(hostPath)
@@ -47,7 +51,7 @@ func resolveRunPaths(workRoot, hostPath string, positional []string) ([]string, 
 	}
 
 	if rel == ".." || strings.HasPrefix(rel, ".."+string(os.PathSeparator)) {
-		return nil, fmt.Errorf("--host-path must be within %s (%s)", hostRootEnv, hostRootAbs)
+		return nil, fmt.Errorf("--host-path must be within %s (%s)", HostRootEnv, hostRootAbs)
 	}
 
 	if rel == "." {

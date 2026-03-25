@@ -2,13 +2,13 @@
 	"$schema": "https://turbo.build/schema.json",
 	"tasks": {
 		"build": {
-			"cache": false
+			"outputs": []
 		},
 		"check": {
-			"cache": false
+			"outputs": []
 		},
 		"format": {
-			"cache": false
+			"outputs": []
 		},
 		"test": {
 			"outputs": []

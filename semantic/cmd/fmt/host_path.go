@@ -7,7 +7,7 @@ import (
 	"strings"
 )
 
-const hostRootEnv = "GO_FMT_HOST_ROOT"
+const hostRootEnv = "HOST_PROJECT_PATH"
 
 func resolveRunPaths(workRoot, hostPath string, positional []string) ([]string, error) {
 	if hostPath == "" {

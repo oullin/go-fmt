@@ -55,7 +55,7 @@ func runCommand(mode string, args []string, stdout, stderr io.Writer) int {
 	configPath := fs.String("config", "", "Path to go-fmt YAML config")
 	reportRoot := fs.String("cwd", "", "Path used for config discovery and report-relative file paths")
 	outputFormat := fs.String("format", "text", "Output format: text, json, agent")
-	hostPath := fs.String("host-path", "", "Absolute host path under GO_FMT_HOST_ROOT to check or format")
+	hostPath := fs.String("host-path", "", "Absolute host path under HOST_PROJECT_PATH to check or format")
 
 	if err := fs.Parse(args); err != nil {
 		return 1

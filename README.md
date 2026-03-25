@@ -51,11 +51,11 @@ docker run --rm -u "$(id -u):$(id -g)" -v "$PWD":/work -w /work ghcr.io/oullin/g
 docker run --rm -u "$(id -u):$(id -g)" -v "$PWD":/work -w /work ghcr.io/oullin/go-fmt:latest format .
 ```
 
-If you prefer a reusable Compose file, download [`examples/consumer/go-fmt.consumer.compose.yaml`](./examples/consumer/go-fmt.consumer.compose.yaml) and run:
+If you prefer a reusable Compose file, download [`examples/consumer/go-fmt..compose.yaml`](./examples/consumer/go-fmt..compose.yaml) and run:
 
 ```bash
-docker compose -f /path/to/go-fmt.consumer.compose.yaml --project-directory "$PWD" run --rm -u "$(id -u):$(id -g)" go-fmt check --host-path "$PWD"
-docker compose -f /path/to/go-fmt.consumer.compose.yaml --project-directory "$PWD" run --rm -u "$(id -u):$(id -g)" go-fmt format --host-path "$PWD"
+docker compose -f /path/to/go-fmt..compose.yaml --project-directory "$PWD" run --rm -u "$(id -u):$(id -g)" go-fmt check --host-path "$PWD"
+docker compose -f /path/to/go-fmt..compose.yaml --project-directory "$PWD" run --rm -u "$(id -u):$(id -g)" go-fmt format --host-path "$PWD"
 ```
 
 To run from the repo without installing anything:
@@ -126,28 +126,23 @@ On macOS, this runs as a Linux container via Docker Desktop rather than as a nat
 
 ### Option 4: Use Docker Compose
 
-The repository ships two Compose files:
-
-- [`examples/consumer/go-fmt.release.compose.yaml`](./examples/consumer/go-fmt.release.compose.yaml) for the preserved release/internal setup
-- [`examples/consumer/go-fmt.consumer.compose.yaml`](./examples/consumer/go-fmt.consumer.compose.yaml) for the downloadable consumer workflow
-
-If you want one reusable Compose file that you can download and use across projects, use [`examples/consumer/go-fmt.consumer.compose.yaml`](./examples/consumer/go-fmt.consumer.compose.yaml).
+If you want one reusable Compose file that you can download and use across projects, use [`examples/consumer/go-fmt..compose.yaml`](./examples/consumer/go-fmt..compose.yaml).
 
 If you copy the file into a project root:
 
 ```bash
-docker compose -f go-fmt.consumer.compose.yaml run --rm -u "$(id -u):$(id -g)" go-fmt check --host-path "$PWD"
-docker compose -f go-fmt.consumer.compose.yaml run --rm -u "$(id -u):$(id -g)" go-fmt format --host-path "$PWD"
+docker compose -f go-fmt..compose.yaml run --rm -u "$(id -u):$(id -g)" go-fmt check --host-path "$PWD"
+docker compose -f go-fmt..compose.yaml run --rm -u "$(id -u):$(id -g)" go-fmt format --host-path "$PWD"
 ```
 
 If you keep the file somewhere central and reuse it from other projects, run the command from the target project root and set `--project-directory "$PWD"` so `.` binds the current project instead of the directory that stores the Compose file:
 
 ```bash
-docker compose -f /path/to/go-fmt.consumer.compose.yaml --project-directory "$PWD" run --rm -u "$(id -u):$(id -g)" go-fmt check --host-path "$PWD/pkg/api"
-docker compose -f /path/to/go-fmt.consumer.compose.yaml --project-directory "$PWD" run --rm -u "$(id -u):$(id -g)" go-fmt format --host-path "$PWD/pkg/api"
+docker compose -f /path/to/go-fmt..compose.yaml --project-directory "$PWD" run --rm -u "$(id -u):$(id -g)" go-fmt check --host-path "$PWD/pkg/api"
+docker compose -f /path/to/go-fmt..compose.yaml --project-directory "$PWD" run --rm -u "$(id -u):$(id -g)" go-fmt format --host-path "$PWD/pkg/api"
 ```
 
-The consumer Compose file mounts the caller's current directory to `/work` and exports `GO_FMT_HOST_ROOT=${PWD}` so `--host-path` can map host paths back to the mounted tree. Paths outside the caller's current directory are intentionally rejected.
+The consumer Compose file mounts the caller's current directory to `/work` and exports `HOST_PROJECT_PATH=${PWD}` so `--host-path` can map host paths back to the mounted tree. Paths outside the caller's current directory are intentionally rejected.
 
 The downloadable consumer Compose file is intentionally minimal:
 
@@ -159,7 +154,7 @@ services:
         volumes:
             - .:/work
         environment:
-            GO_FMT_HOST_ROOT: ${PWD}
+            HOST_PROJECT_PATH: ${PWD}
         command: ['help']
 ```
 
@@ -178,12 +173,12 @@ If no paths are provided, both commands default to the current directory (`.`).
 
 Both commands accept the same flags:
 
-| Flag          | Description                                                                         | Default                            |
-| ------------- | ----------------------------------------------------------------------------------- | ---------------------------------- |
-| `--config`    | Path to a `config.yml` config file                                                  | auto-detected in working directory |
-| `--cwd`       | Path used for config discovery and report-relative file paths                       | current working directory          |
-| `--format`    | Output format: `text`, `json`, or `agent`                                           | `text`                             |
-| `--host-path` | Absolute host path under `GO_FMT_HOST_ROOT`; intended for the consumer Compose flow | _(disabled unless env is set)_     |
+| Flag          | Description                                                                          | Default                            |
+| ------------- | ------------------------------------------------------------------------------------ | ---------------------------------- |
+| `--config`    | Path to a `config.yml` config file                                                   | auto-detected in working directory |
+| `--cwd`       | Path used for config discovery and report-relative file paths                        | current working directory          |
+| `--format`    | Output format: `text`, `json`, or `agent`                                            | `text`                             |
+| `--host-path` | Absolute host path under `HOST_PROJECT_PATH`; intended for the consumer Compose flow | _(disabled unless env is set)_     |
 
 The standalone CLI formats Go source only. Repository-local `make format` also runs `oxfmt` across every supported non-Go file type in the repo, excluding `*.go`. CI checks run per workspace with `pnpm turbo run check --filter=semantic` and `pnpm turbo run check --filter=tooling`.
 
@@ -519,11 +514,11 @@ docker run --rm -u "$(id -u):$(id -g)" -v "$PWD":/work -w /work ghcr.io/oullin/g
 docker run --rm -u "$(id -u):$(id -g)" -v "$PWD":/work -w /work ghcr.io/oullin/go-fmt:latest format .
 ```
 
-If you prefer a reusable Compose file, download [`examples/consumer/go-fmt.consumer.compose.yaml`](./examples/consumer/go-fmt.consumer.compose.yaml) and invoke it from the target project root:
+If you prefer a reusable Compose file, download [`examples/consumer/go-fmt..compose.yaml`](./examples/consumer/go-fmt..compose.yaml) and invoke it from the target project root:
 
 ```bash
-docker compose -f /path/to/go-fmt.consumer.compose.yaml --project-directory "$PWD" run --rm -u "$(id -u):$(id -g)" go-fmt check --host-path "$PWD"
-docker compose -f /path/to/go-fmt.consumer.compose.yaml --project-directory "$PWD" run --rm -u "$(id -u):$(id -g)" go-fmt format --host-path "$PWD"
+docker compose -f /path/to/go-fmt..compose.yaml --project-directory "$PWD" run --rm -u "$(id -u):$(id -g)" go-fmt check --host-path "$PWD"
+docker compose -f /path/to/go-fmt..compose.yaml --project-directory "$PWD" run --rm -u "$(id -u):$(id -g)" go-fmt format --host-path "$PWD"
 ```
 
 `docker run ghcr.io/oullin/go-fmt:latest` defaults to `help`, so it prints usage if you do not pass a subcommand.

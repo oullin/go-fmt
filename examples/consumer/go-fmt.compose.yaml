@@ -4,4 +4,6 @@ services:
         working_dir: /work
         volumes:
             - .:/work
+        environment:
+            HOST_PROJECT_PATH: ${PWD}
         command: ['help']

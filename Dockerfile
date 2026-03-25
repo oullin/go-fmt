@@ -12,7 +12,7 @@ RUN go -C /src/semantic mod download
 COPY . .
 
 RUN CGO_ENABLED=0 GOOS=${TARGETOS} GOARCH=${TARGETARCH} \
-	go -C /src/semantic build -trimpath -ldflags="-s -w -X main.version=${VERSION}" -o /out/fmt ./cmd/fmt
+	go -C /src/semantic build -trimpath -ldflags="-s -w -X main.version=${VERSION}" -o /out/go-fmt ./cmd/fmt
 
 RUN CGO_ENABLED=0 GOOS=${TARGETOS} GOARCH=${TARGETARCH} \
 	go build -trimpath -ldflags="-s -w" -o /out/gofmt cmd/gofmt
@@ -32,9 +32,9 @@ WORKDIR /work
 COPY --from=gosdk /usr/local/go /usr/local/go
 ENV PATH="/usr/local/go/bin:${PATH}"
 
-COPY --from=builder /out/fmt /usr/local/bin/fmt
+COPY --from=builder /out/go-fmt /usr/local/bin/go-fmt
 COPY --from=builder /out/gofmt /usr/local/bin/gofmt
 COPY --from=builder /out/goimports /usr/local/bin/goimports
 
-ENTRYPOINT ["/usr/local/bin/fmt"]
+ENTRYPOINT ["/usr/local/bin/go-fmt"]
 CMD ["help"]

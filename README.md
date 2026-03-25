@@ -4,7 +4,7 @@
 
 `go-fmt` goes beyond `gofmt`. It applies rule-based semantic formatting — enforcing blank-line boundaries around control flow, ensuring type declarations appear at the top of the file, and normalising spacing around `var`, `defer`, and `return` — then finishes with `gofmt` and `goimports`. The result is consistently styled Go, whether the code was written by a person, an agent, or a code generator.
 
-The project ships as a **reusable engine** and a **standalone CLI** (`fmt`). Rules run first; formatters run second — giving you deterministic, layered formatting in a single pass. The repository itself is a small Turborepo: the Go formatter lives in the `semantic` workspace, while the `tooling` workspace owns Oxc-based formatting for every supported non-Go file type.
+The project ships as a **reusable engine** and a **standalone CLI** (`go-fmt`). Rules run first; formatters run second — giving you deterministic, layered formatting in a single pass. The repository itself is a small Turborepo: the Go formatter lives in the `semantic` workspace, while the `tooling` workspace owns Oxc-based formatting for every supported non-Go file type.
 
 ---
 
@@ -48,8 +48,8 @@ With Go installed locally:
 
 ```bash
 go install github.com/oullin/go-fmt/semantic/cmd/fmt@latest
-fmt check .
-fmt format .
+go-fmt check .
+go-fmt format .
 ```
 
 ---
@@ -64,7 +64,7 @@ Requires Go 1.25 or newer.
 go install github.com/oullin/go-fmt/semantic/cmd/fmt@latest
 ```
 
-Make sure your Go bin directory is on `PATH` so the `fmt` binary is available in your shell:
+Make sure your Go bin directory is on `PATH` so the `go-fmt` binary is available in your shell:
 
 ```bash
 export PATH="$(go env GOPATH)/bin:$PATH"
@@ -73,23 +73,23 @@ export PATH="$(go env GOPATH)/bin:$PATH"
 Verify the installation:
 
 ```bash
-fmt version
+go-fmt version
 ```
 
 ### Build Locally
 
-Build a host-native binary into `./bin/fmt` from this repository:
+Build a host-native binary into `./bin/go-fmt` from this repository:
 
 ```bash
 make build
-./bin/fmt version
+./bin/go-fmt version
 ```
 
 To install from the local source tree into your Go bin directory:
 
 ```bash
 make install
-fmt version
+go-fmt version
 ```
 
 ### Run from Source
@@ -207,12 +207,12 @@ Paths outside the caller's current directory are intentionally rejected.
 
 ## CLI
 
-The binary is called `fmt` and exposes two primary commands.
+The binary is called `go-fmt` and exposes two primary commands.
 
-| Command                 | Purpose                                   |
-| ----------------------- | ----------------------------------------- |
-| `fmt check [paths...]`  | report violations without writing changes |
-| `fmt format [paths...]` | fix violations and write changes to disk  |
+| Command                    | Purpose                                   |
+| -------------------------- | ----------------------------------------- |
+| `go-fmt check [paths...]`  | report violations without writing changes |
+| `go-fmt format [paths...]` | fix violations and write changes to disk  |
 
 If no paths are provided, both commands default to the current directory (`.`).
 
@@ -231,22 +231,22 @@ The standalone CLI formats Go source only. Repository-local `make format` also r
 
 ```bash
 # check everything in the current directory
-fmt check .
+go-fmt check .
 
 # check with a specific config and JSON output
-fmt check --config ./config.yml --format json .
+go-fmt check --config ./config.yml --format json .
 
 # check a host path mounted by the consumer Compose file
-fmt check --host-path /absolute/host/project/pkg/api
+go-fmt check --host-path /absolute/host/project/pkg/api
 
 # format a single file
-fmt format ./semantic/rules/spacing/spacing.go
+go-fmt format ./semantic/rules/spacing/spacing.go
 
 # format a host path mounted by the consumer Compose file
-fmt format --host-path /absolute/host/project/pkg/api
+go-fmt format --host-path /absolute/host/project/pkg/api
 
 # agent-friendly output for CI integrations
-fmt check --format agent .
+go-fmt check --format agent .
 ```
 
 ---
@@ -472,12 +472,12 @@ Compact JSON designed for AI agents and CI pipelines. It groups changed files an
 
 ## Exit Codes
 
-| Command      | Code | Meaning                             |
-| ------------ | ---- | ----------------------------------- |
-| `fmt check`  | `0`  | No violations found — code is clean |
-| `fmt check`  | `1`  | Violations or errors detected       |
-| `fmt format` | `0`  | Formatting applied successfully     |
-| `fmt format` | `1`  | An error occurred during formatting |
+| Command         | Code | Meaning                             |
+| --------------- | ---- | ----------------------------------- |
+| `go-fmt check`  | `0`  | No violations found — code is clean |
+| `go-fmt check`  | `1`  | Violations or errors detected       |
+| `go-fmt format` | `0`  | Formatting applied successfully     |
+| `go-fmt format` | `1`  | An error occurred during formatting |
 
 ---
 
@@ -504,7 +504,7 @@ make help            # list all targets and variables
 pnpm turbo run check --filter=semantic   # run semantic workspace checks
 pnpm turbo run check --filter=tooling    # run tooling workspace checks
 make format          # apply Go fixes plus Oxc formatting for supported non-Go files
-make build           # compile a host-native binary to ./bin/fmt
+make build           # compile a host-native binary to ./bin/go-fmt
 make release         # build release binaries into ./dist
 make test            # run all tests with verbose output
 make test-race       # run tests with race detector

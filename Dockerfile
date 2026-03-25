@@ -21,9 +21,16 @@ RUN CGO_ENABLED=0 GOOS=${TARGETOS} GOARCH=${TARGETARCH} GOPATH=/tmp/go \
 	go install -trimpath -ldflags="-s -w" golang.org/x/tools/cmd/goimports@v0.43.0 && \
 	find /tmp/go/bin -name goimports -exec cp {} /out/goimports \;
 
+FROM golang:1.25-alpine AS gosdk
+
 FROM alpine:3.21
 
+RUN apk add --no-cache git
+
 WORKDIR /work
+
+COPY --from=gosdk /usr/local/go /usr/local/go
+ENV PATH="/usr/local/go/bin:${PATH}"
 
 COPY --from=builder /out/fmt /usr/local/bin/fmt
 COPY --from=builder /out/gofmt /usr/local/bin/gofmt

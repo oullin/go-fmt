@@ -14,7 +14,7 @@ case "${RELEASE_TAG}" in
 		;;
 esac
 
-git fetch --force --tags origin "refs/tags/${RELEASE_TAG}:refs/tags/${RELEASE_TAG}"
+git fetch --force origin "refs/tags/${RELEASE_TAG}:refs/tags/${RELEASE_TAG}"
 git checkout --detach "refs/tags/${RELEASE_TAG}"
 
 tag_sha="$(git rev-list -n1 "refs/tags/${RELEASE_TAG}")"

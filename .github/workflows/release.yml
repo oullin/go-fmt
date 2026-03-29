@@ -71,11 +71,20 @@ jobs:
               with:
                   fetch-depth: 0
 
+            - name: Verify release tag token is configured
+              env:
+                  RELEASE_TAG_TOKEN: ${{ secrets.RELEASE_TAG_TOKEN }}
+              run: |
+                  if [ -z "${RELEASE_TAG_TOKEN}" ]; then
+                      printf '%s\n' 'RELEASE_TAG_TOKEN is required to create release tags that trigger publish-release.yml on push.tags. Configure a fine-grained PAT with repository contents write access.' >&2
+                      exit 1
+                  fi
+
             - name: Bump version and create tag
               id: version
               uses: mathieudutour/github-tag-action@v6.2
               with:
-                  github_token: ${{ secrets.GITHUB_TOKEN }}
+                  github_token: ${{ secrets.RELEASE_TAG_TOKEN }}
                   default_bump: patch
                   default_prerelease_bump: false
                   tag_prefix: v

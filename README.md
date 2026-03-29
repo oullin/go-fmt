@@ -108,12 +108,12 @@ If no paths are provided, both commands default to the current directory (`.`).
 
 Both commands accept the same flags:
 
-| Flag          | Description                                                                          | Default                            |
-| ------------- | ------------------------------------------------------------------------------------ | ---------------------------------- |
-| `--config`    | Path to a `config.yml` file                                                          | Auto-detected in the working tree  |
-| `--cwd`       | Base path used for config discovery and relative output paths                        | Current working directory          |
-| `--format`    | Output format: `text`, `json`, or `agent`                                            | `text`                             |
-| `--host-path` | Absolute host path under `HOST_PROJECT_PATH`; intended for the Compose consumer flow | Disabled unless env is set         |
+| Flag          | Description                                                                          | Default                           |
+| ------------- | ------------------------------------------------------------------------------------ | --------------------------------- |
+| `--config`    | Path to a `config.yml` file                                                          | Auto-detected in the working tree |
+| `--cwd`       | Base path used for config discovery and relative output paths                        | Current working directory         |
+| `--format`    | Output format: `text`, `json`, or `agent`                                            | `text`                            |
+| `--host-path` | Absolute host path under `HOST_PROJECT_PATH`; intended for the Compose consumer flow | Disabled unless env is set        |
 
 ### Common workflows
 
@@ -149,14 +149,14 @@ The recommended Compose file is already in this repository at [`examples/consume
 
 ```yaml
 services:
-  go-fmt:
-    image: ghcr.io/oullin/go-fmt:latest
-    working_dir: /work
-    volumes:
-      - .:/work
-    environment:
-      HOST_PROJECT_PATH: ${PWD}
-    command: ["help"]
+    go-fmt:
+        image: ghcr.io/oullin/go-fmt:latest
+        working_dir: /work
+        volumes:
+            - .:/work
+        environment:
+            HOST_PROJECT_PATH: ${PWD}
+        command: ['help']
 ```
 
 Download it into your project:
@@ -223,23 +223,23 @@ All fields are optional:
 
 ```yaml
 rules:
-  spacing:
-    enabled: true
+    spacing:
+        enabled: true
 
 formatters:
-  gofmt: true
-  goimports: true
+    gofmt: true
+    goimports: true
 
 exclude:
-  - .git
-  - node_modules
-  - vendor
+    - .git
+    - node_modules
+    - vendor
 
 not_path:
-  - third_party/generated
+    - third_party/generated
 
 not_name:
-  - "*.pb.go"
+    - '*.pb.go'
 ```
 
 | Field                   | Type | Default                          | Description                                 |
@@ -380,28 +380,28 @@ Structured output for scripts and tooling. The CLI emits a single JSON object; i
 
 ```json
 {
-  "result": "fail",
-  "files": 1,
-  "changed": 1,
-  "results": [
-    {
-      "file": "main.go",
-      "applied": ["spacing"],
-      "violations": [
-        {
-          "rule": "spacing",
-          "line": 5,
-          "message": "missing blank line before if statement"
-        },
-        {
-          "rule": "spacing",
-          "line": 8,
-          "message": "missing blank line before return statement"
-        }
-      ],
-      "changed": true
-    }
-  ]
+	"result": "fail",
+	"files": 1,
+	"changed": 1,
+	"results": [
+		{
+			"file": "main.go",
+			"applied": ["spacing"],
+			"violations": [
+				{
+					"rule": "spacing",
+					"line": 5,
+					"message": "missing blank line before if statement"
+				},
+				{
+					"rule": "spacing",
+					"line": 8,
+					"message": "missing blank line before return statement"
+				}
+			],
+			"changed": true
+		}
+	]
 }
 ```
 
@@ -411,32 +411,32 @@ Compact JSON for AI agents and CI integrations:
 
 ```json
 {
-  "result": "fail",
-  "summary": {
-    "files": 1,
-    "changed": 1,
-    "violations": 2
-  },
-  "changed": [
-    {
-      "file": "main.go",
-      "steps": ["spacing"]
-    }
-  ],
-  "violations": [
-    {
-      "file": "main.go",
-      "rule": "spacing",
-      "line": 5,
-      "message": "missing blank line before if statement"
-    },
-    {
-      "file": "main.go",
-      "rule": "spacing",
-      "line": 8,
-      "message": "missing blank line before return statement"
-    }
-  ]
+	"result": "fail",
+	"summary": {
+		"files": 1,
+		"changed": 1,
+		"violations": 2
+	},
+	"changed": [
+		{
+			"file": "main.go",
+			"steps": ["spacing"]
+		}
+	],
+	"violations": [
+		{
+			"file": "main.go",
+			"rule": "spacing",
+			"line": 5,
+			"message": "missing blank line before if statement"
+		},
+		{
+			"file": "main.go",
+			"rule": "spacing",
+			"line": 8,
+			"message": "missing blank line before return statement"
+		}
+	]
 }
 ```
 
@@ -484,13 +484,13 @@ make clean
 
 ### Make variables
 
-| Variable            | Default                                             | Description                                  |
-| ------------------- | --------------------------------------------------- | -------------------------------------------- |
-| `ARGS`              | `.`                                                 | Files or directories to target               |
-| `VERSION`           | `git describe ...` or `dev`                         | Build version injected into binaries         |
-| `CGO_ENABLED`       | `0`                                                 | CGO setting for build and release            |
-| `DIST_DIR`          | `dist`                                              | Output directory for release binaries        |
-| `RELEASE_PLATFORMS` | `darwin/amd64 darwin/arm64 linux/amd64 linux/arm64` | Platforms built by `make release`            |
+| Variable            | Default                                             | Description                           |
+| ------------------- | --------------------------------------------------- | ------------------------------------- |
+| `ARGS`              | `.`                                                 | Files or directories to target        |
+| `VERSION`           | `git describe ...` or `dev`                         | Build version injected into binaries  |
+| `CGO_ENABLED`       | `0`                                                 | CGO setting for build and release     |
+| `DIST_DIR`          | `dist`                                              | Output directory for release binaries |
+| `RELEASE_PLATFORMS` | `darwin/amd64 darwin/arm64 linux/amd64 linux/arm64` | Platforms built by `make release`     |
 
 ### Examples
 

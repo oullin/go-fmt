@@ -1,9 +1,14 @@
 name: Publish Release
 
+# Release publishing is invoked explicitly from Release Tag; tag pushes are not
+# a supported publish trigger path in this repository.
 on:
-    push:
-        tags:
-            - 'v*'
+    workflow_call:
+        inputs:
+            tag:
+                description: Release tag to publish, for example v0.0.12
+                required: true
+                type: string
     workflow_dispatch:
         inputs:
             tag:
@@ -17,10 +22,10 @@ permissions:
 
 env:
     IMAGE_NAME: ghcr.io/oullin/go-fmt
-    RELEASE_TAG: ${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref_name }}
+    RELEASE_TAG: ${{ inputs.tag }}
 
 concurrency:
-    group: publish-release-${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref_name }}
+    group: publish-release-${{ inputs.tag }}
     cancel-in-progress: false
 
 jobs:

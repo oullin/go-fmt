@@ -3,12 +3,12 @@ module github.com/oullin/go-fmt/semantic
 go 1.25.0
 
 require (
+	github.com/fatih/color v1.19.0
 	github.com/spf13/viper v1.20.1
 	golang.org/x/tools v0.43.0
 )
 
 require (
-	github.com/fatih/color v1.19.0 // indirect
 	github.com/fsnotify/fsnotify v1.8.0 // indirect
 	github.com/go-viper/mapstructure/v2 v2.2.1 // indirect
 	github.com/mattn/go-colorable v0.1.14 // indirect

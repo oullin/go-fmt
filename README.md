@@ -32,8 +32,6 @@ docker compose -f go-fmt.compose.yaml run --rm go-fmt check .
 docker compose -f go-fmt.compose.yaml run --rm go-fmt format .
 ```
 
-Temporary workaround: the published `ghcr.io/oullin/go-fmt:latest` tag is currently stale. Pin `ghcr.io/oullin/go-fmt:v0.0.11` in Docker-based workflows until `latest` is republished.
-
 This is the recommended integration path. It keeps the command short, the container configuration reusable, and the toolchain identical across machines and CI.
 
 ### Local install
@@ -93,8 +91,8 @@ go -C semantic run ./cmd/fmt format .
 If you do not want a Compose file, use the published image directly:
 
 ```bash
-docker run --rm -v "$PWD":/work -w /work ghcr.io/oullin/go-fmt:v0.0.11 check .
-docker run --rm -v "$PWD":/work -w /work ghcr.io/oullin/go-fmt:v0.0.11 format .
+docker run --rm -v "$PWD":/work -w /work ghcr.io/oullin/go-fmt:latest check .
+docker run --rm -v "$PWD":/work -w /work ghcr.io/oullin/go-fmt:latest format .
 ```
 
 ## CLI
@@ -154,7 +152,7 @@ The recommended Compose file is already in this repository at [`examples/consume
 ```yaml
 services:
     go-fmt:
-        image: ghcr.io/oullin/go-fmt:v0.0.11
+        image: ghcr.io/oullin/go-fmt:latest
         working_dir: /work
         volumes:
             - .:/work
@@ -162,8 +160,6 @@ services:
             HOST_PROJECT_PATH: ${PWD}
         command: ['help']
 ```
-
-The example is pinned to `v0.0.11` as a temporary workaround while `latest` is republished with the current pretty renderer.
 
 Download it into your project:
 
@@ -216,9 +212,9 @@ Paths outside the caller's current directory are intentionally rejected.
 Running the image directly is still useful for quick checks:
 
 ```bash
-docker run --rm ghcr.io/oullin/go-fmt:v0.0.11
-docker run --rm -v "$PWD":/work -w /work ghcr.io/oullin/go-fmt:v0.0.11 check .
-docker run --rm -v "$PWD":/work -w /work ghcr.io/oullin/go-fmt:v0.0.11 format .
+docker run --rm ghcr.io/oullin/go-fmt:latest
+docker run --rm -v "$PWD":/work -w /work ghcr.io/oullin/go-fmt:latest check .
+docker run --rm -v "$PWD":/work -w /work ghcr.io/oullin/go-fmt:latest format .
 ```
 
 ## Configuration

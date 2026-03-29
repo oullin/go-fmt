@@ -11,7 +11,7 @@ import (
 
 func RenderText(w io.Writer, cwd, mode string, report engine.Report) error {
 	if report.Files == 0 {
-		if _, err := color.New(color.FgYellow).Fprintf(w, "  No Go files found.\n"); err != nil {
+		if _, err := color.New(color.FgYellow).Fprintf(w, "\n  No Go files found.\n\n"); err != nil {
 			return err
 		}
 
@@ -24,7 +24,7 @@ func RenderText(w io.Writer, cwd, mode string, report engine.Report) error {
 		action = "Formatted"
 	}
 
-	if _, err := color.New(color.FgGreen, color.Bold).Fprintf(w, "  %s %d file(s).\n\n", action, report.Files); err != nil {
+	if _, err := color.New(color.FgGreen, color.Bold).Fprintf(w, "\n  %s %d file(s).\n\n", action, report.Files); err != nil {
 		return err
 	}
 
@@ -88,7 +88,7 @@ func RenderText(w io.Writer, cwd, mode string, report engine.Report) error {
 		summaryColor.Add(color.FgGreen)
 	}
 
-	_, err := summaryColor.Fprintf(w, "  Result: %s. %d changed, %d violation(s), %d error(s).\n", report.Result, report.Changed, report.ViolationCount(), report.ErrorCount())
+	_, err := summaryColor.Fprintf(w, "  Result: %s. %d changed, %d violation(s), %d error(s).\n\n", report.Result, report.Changed, report.ViolationCount(), report.ErrorCount())
 
 	return err
 }

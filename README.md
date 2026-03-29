@@ -39,12 +39,12 @@ This is the recommended integration path. It keeps the command short, the contai
 ```bash
 go install github.com/oullin/go-fmt/semantic/cmd/fmt@latest
 
-go-fmt version
-go-fmt check .
-go-fmt format .
+fmt version
+fmt check .
+fmt format .
 ```
 
-If `go-fmt` is not on `PATH`, add your Go bin directory:
+If `fmt` is not on `PATH`, add your Go bin directory:
 
 ```bash
 export PATH="$(go env GOPATH)/bin:$PATH"
@@ -58,7 +58,7 @@ Requires Go 1.25 or newer.
 
 ```bash
 go install github.com/oullin/go-fmt/semantic/cmd/fmt@latest
-go-fmt version
+fmt version
 ```
 
 ### Build locally from this repository
@@ -72,7 +72,7 @@ To install from the local source tree:
 
 ```bash
 make install
-go-fmt version
+fmt version
 ```
 
 ### Run from source
@@ -328,6 +328,25 @@ func run() {
 }
 ```
 
+**Blank lines around type declarations**
+
+`type` declarations are separated from surrounding code with a blank line. The formatter reports this as `missing blank line around type definition`.
+
+```go
+// before
+type Config struct{}
+func run() {
+    println("ok")
+}
+
+// after
+type Config struct{}
+
+func run() {
+    println("ok")
+}
+```
+
 **Type declarations at the top of the file**
 
 All `type` definitions are moved above non-type declarations, after the import block.
@@ -529,3 +548,7 @@ source file -> spacing rule -> gofmt -> goimports -> result
 ```
 
 Each step runs only when enabled in config. If a file is unchanged after the pipeline, it is reported as clean.
+
+### Extensibility
+
+The rule system is designed to be extended. New rules can be created by implementing the `Rule` interface (`Name()` and `Apply()`) and registering them in the rule set before the engine is constructed.

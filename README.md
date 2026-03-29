@@ -63,6 +63,8 @@ fmt version
 
 ### Build locally from this repository
 
+Run `make help` first to see the available repository tasks and override variables before choosing a build, test, format, install, or release target.
+
 ```bash
 make build
 ./bin/go-fmt version
@@ -482,6 +484,8 @@ Install workspace dependencies before using local repository tasks:
 nvm use
 pnpm install
 ```
+
+Start with `make help` to see the available repository tasks and override variables for local development.
 
 ### Common tasks
 

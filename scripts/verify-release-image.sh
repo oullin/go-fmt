@@ -44,11 +44,11 @@ if [ "$report_status" -ne 1 ]; then
 	exit 1
 fi
 
-printf '%s\n' "$report_output" | grep -Fq "  sample.go"
-printf '%s\n' "$report_output" | grep -Fq "    [spacing] line 7: missing blank line after if statement"
-printf '%s\n' "$report_output" | grep -Fq "  Result: fail. 1 changed, 1 violation(s), 0 error(s)."
+grep -Fq "  sample.go" <<<"$report_output"
+grep -Fq "    [spacing] line 7: missing blank line after if statement" <<<"$report_output"
+grep -Fq "  Result: fail. 1 changed, 1 violation(s), 0 error(s)." <<<"$report_output"
 
-if printf '%s\n' "$report_output" | grep -Fq "~ sample.go:7 [spacing]"; then
+if grep -Fq "~ sample.go:7 [spacing]" <<<"$report_output"; then
 	printf 'legacy flat renderer detected in %s\n' "${IMAGE_NAME}:${NEW_TAG}" >&2
 	exit 1
 fi

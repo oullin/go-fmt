@@ -486,12 +486,13 @@ Compact JSON designed for AI agents and CI pipelines. It groups changed files an
 ### Prerequisites
 
 - Go 1.25 or newer
-- Node.js with `pnpm` for repo-local `make` and Turbo workflows
+- Node.js 25.8.2 with `pnpm` 10.32.1 for repo-local `make` and Turbo workflows
 - Docker Desktop or another Docker runtime if you use the published container image
 
 Install workspace dependencies before using the repo-local tasks:
 
 ```bash
+nvm use
 pnpm install
 ```
 

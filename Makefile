@@ -17,42 +17,8 @@ RELEASE_PLATFORMS ?= darwin/amd64 darwin/arm64 linux/amd64 linux/arm64 ## Space-
 .PHONY: help format build release test test-race test-short vet fmt-source install clean
 
 help: ## Show available targets and override variables
-	@# Parse target and variable metadata from this Makefile and render the help overview.
-	@awk '\
-		BEGIN { \
-			FS = "## "; \
-		} \
-		function trim(value) { \
-			gsub(/^[[:space:]]+|[[:space:]]+$$/, "", value); \
-			return value; \
-		} \
-		/^[a-zA-Z0-9_.-]+:.*## / { \
-			split($$1, parts, ":"); \
-			targets[++target_count] = sprintf("  %-14s %s", parts[1], $$2); \
-			next; \
-		} \
-		/^[A-Z_][A-Z0-9_]*[[:space:]]*\?*=.*## / { \
-			split($$1, parts, "\\?="); \
-			vars[++var_count] = sprintf("  %-18s %-24s %s", trim(parts[1]), trim(parts[2]), $$2); \
-		} \
-		END { \
-			printf "go-fmt developer targets\n\nTargets:\n"; \
-			for (i = 1; i <= target_count; i++) { \
-				print targets[i]; \
-			} \
-			if (var_count) { \
-				printf "\nVariables:\n"; \
-				for (i = 1; i <= var_count; i++) { \
-					print vars[i]; \
-				} \
-			} \
-			} \
-		' $(MAKEFILE_LIST)
-	@# Print a few representative commands developers can copy as starting points.
-	@printf "\nExamples:\n"
-	@printf "  pnpm turbo run check --filter=semantic\n"
-	@printf "  pnpm turbo run check --filter=tooling\n"
-	@printf "  make fmt-source\n"
+	@# Parse Make metadata and render styled help output through the dedicated helper script.
+	@./scripts/help.sh $(MAKEFILE_LIST)
 
 format: ## Apply formatter changes to ARGS
 	@# Run the repository formatter script against the requested files or directories.

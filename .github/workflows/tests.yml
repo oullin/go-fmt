@@ -11,9 +11,6 @@ on:
             - ready_for_review
             - edited
 
-env:
-    FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: 'true'
-
 jobs:
     check:
         if: github.event.pull_request.draft == false && github.event.pull_request.base.ref == 'main'
@@ -26,15 +23,15 @@ jobs:
                     - tooling
 
         steps:
-            - uses: actions/checkout@v6
+            - uses: actions/checkout@v4
               name: Checkout repository
 
-            - uses: actions/setup-node@v6
+            - uses: actions/setup-node@v4
               name: Install Node
               with:
                   node-version: 25.8.2
 
-            - uses: pnpm/action-setup@v5
+            - uses: pnpm/action-setup@v4
               name: Install pnpm
               with:
                   version: 10.33.0
@@ -57,7 +54,7 @@ jobs:
         runs-on: ubuntu-latest
 
         steps:
-            - uses: actions/checkout@v6
+            - uses: actions/checkout@v4
               name: Checkout repository
 
             - uses: actions/setup-go@v6

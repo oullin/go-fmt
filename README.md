@@ -529,10 +529,14 @@ The release workflow:
 
 - runs checks for both workspaces
 - runs Go tests with the race detector
-- creates the next Git tag and GitHub release
+- creates the next Git tag when `main` advances
+- publishes the GitHub release from that immutable tag
 - publishes `ghcr.io/oullin/go-fmt:latest`
 - publishes `ghcr.io/oullin/go-fmt:<tag>`
 - pushes multi-arch images for `linux/amd64` and `linux/arm64`
+- supports retrying a failed publish by manually dispatching the publish workflow for an existing tag
+
+GitHub Actions must also define `RELEASE_TAG_TOKEN` for the tag creation step. Use a fine-grained personal access token, or another non-default token, with repository contents write access for an identity that is allowed to create tags in this repository. This token is used specifically so the `v*` tag push emits the downstream `Publish Release` workflow; the default `GITHUB_TOKEN` does not trigger that follow-on workflow when it creates the tag.
 
 ## Package Layout
 

@@ -529,10 +529,14 @@ The release workflow:
 
 - runs checks for both workspaces
 - runs Go tests with the race detector
-- creates the next Git tag and GitHub release
+- creates the next Git tag when `main` advances
+- publishes the GitHub release from that immutable tag
 - publishes `ghcr.io/oullin/go-fmt:latest`
 - publishes `ghcr.io/oullin/go-fmt:<tag>`
 - pushes multi-arch images for `linux/amd64` and `linux/arm64`
+- supports retrying a failed publish by manually dispatching the publish workflow for an existing tag
+
+`Release Tag` creates the next version tag with the default `GITHUB_TOKEN`, then invokes `Publish Release` directly as a reusable workflow. Manual retries remain available through `workflow_dispatch` on the publish workflow for an existing tag.
 
 ## Package Layout
 

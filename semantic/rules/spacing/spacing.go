@@ -8,11 +8,22 @@ import (
 	"go/parser"
 	"go/token"
 	"slices"
+	"strconv"
+	"strings"
 
 	"github.com/oullin/go-fmt/semantic/rules"
 )
 
 type Rule struct{}
+
+type importAliases map[string]string
+
+var stdlibSpacingImports = map[string]string{
+	"sort":         "sort",
+	"slices":       "slices",
+	"math/rand":    "rand",
+	"math/rand/v2": "rand",
+}
 
 func New() Rule {
 	return Rule{}
@@ -42,6 +53,7 @@ func analyse(filename string, src []byte) ([]rules.Violation, []byte, error) {
 
 	lineStarts := buildLineStarts(src)
 	insertions := map[int]struct{}{}
+	aliases := buildImportAliases(file)
 
 	var violations []rules.Violation
 
@@ -50,7 +62,7 @@ func analyse(filename string, src []byte) ([]rules.Violation, []byte, error) {
 			current := list[i]
 			next := list[i+1]
 
-			if message, ok := statementGapRule(current, next); ok {
+			if message, ok := statementGapRule(current, next, aliases); ok {
 				endLine := fset.Position(current.End()).Line
 				nextLine := fset.Position(next.Pos()).Line
 
@@ -133,47 +145,63 @@ func inspectStmtLists(file *ast.File, visit func([]ast.Stmt)) {
 	})
 }
 
-func statementGapRule(current ast.Stmt, next ast.Stmt) (string, bool) {
-	if requiresLeadingBlankLine(next) {
-		return fmt.Sprintf("missing blank line before %s", statementLabel(next)), true
+func statementGapRule(current ast.Stmt, next ast.Stmt, aliases importAliases) (string, bool) {
+	if label, ok := requiresLeadingBlankLine(next, aliases); ok {
+		return fmt.Sprintf("missing blank line before %s", label), true
 	}
 
-	if requiresTrailingBlankLine(current, next) {
-		return fmt.Sprintf("missing blank line after %s", statementLabel(current)), true
+	if label, ok := requiresTrailingBlankLine(current, next, aliases); ok {
+		return fmt.Sprintf("missing blank line after %s", label), true
 	}
 
 	return "", false
 }
 
-func requiresTrailingBlankLine(current ast.Stmt, next ast.Stmt) bool {
+func requiresTrailingBlankLine(current ast.Stmt, next ast.Stmt, aliases importAliases) (string, bool) {
+	if label, ok := stdlibSpacedCallLabel(current, aliases); ok {
+		return label, true
+	}
+
 	switch current.(type) {
 	case *ast.IfStmt, *ast.ForStmt, *ast.RangeStmt, *ast.SwitchStmt, *ast.TypeSwitchStmt, *ast.SelectStmt, *ast.DeferStmt, *ast.BranchStmt:
-		return true
+		return statementLabel(current, aliases), true
 	case *ast.DeclStmt:
 		if isTypeDeclStmt(current) {
-			return true
+			return statementLabel(current, aliases), true
 		}
 
 		if isVarDeclStmt(current) {
-			return !isShortAssignStmt(next) && !isVarDeclStmt(next)
+			if !isShortAssignStmt(next) && !isVarDeclStmt(next) {
+				return statementLabel(current, aliases), true
+			}
 		}
 	}
 
-	return false
+	return "", false
 }
 
-func requiresLeadingBlankLine(stmt ast.Stmt) bool {
-	switch stmt.(type) {
-	case *ast.IfStmt, *ast.ForStmt, *ast.RangeStmt, *ast.SwitchStmt, *ast.TypeSwitchStmt, *ast.SelectStmt, *ast.DeferStmt, *ast.ReturnStmt, *ast.BranchStmt:
-		return true
-	case *ast.DeclStmt:
-		return isTypeDeclStmt(stmt) || isVarDeclStmt(stmt)
+func requiresLeadingBlankLine(stmt ast.Stmt, aliases importAliases) (string, bool) {
+	if label, ok := stdlibSpacedCallLabel(stmt, aliases); ok {
+		return label, true
 	}
 
-	return false
+	switch stmt.(type) {
+	case *ast.IfStmt, *ast.ForStmt, *ast.RangeStmt, *ast.SwitchStmt, *ast.TypeSwitchStmt, *ast.SelectStmt, *ast.DeferStmt, *ast.ReturnStmt, *ast.BranchStmt:
+		return statementLabel(stmt, aliases), true
+	case *ast.DeclStmt:
+		if isTypeDeclStmt(stmt) || isVarDeclStmt(stmt) {
+			return statementLabel(stmt, aliases), true
+		}
+	}
+
+	return "", false
 }
 
-func statementLabel(stmt ast.Stmt) string {
+func statementLabel(stmt ast.Stmt, aliases importAliases) string {
+	if label, ok := stdlibSpacedCallLabel(stmt, aliases); ok {
+		return label
+	}
+
 	switch typed := stmt.(type) {
 	case *ast.IfStmt:
 		return "if statement"
@@ -204,6 +232,75 @@ func statementLabel(stmt ast.Stmt) string {
 	}
 
 	return "statement"
+}
+
+func buildImportAliases(file *ast.File) importAliases {
+	aliases := make(importAliases)
+
+	for _, spec := range file.Imports {
+		path, err := strconv.Unquote(spec.Path.Value)
+
+		if err != nil {
+			continue
+		}
+
+		defaultName, ok := stdlibSpacingImports[path]
+
+		if !ok {
+			continue
+		}
+
+		name := defaultName
+
+		if spec.Name != nil {
+			name = spec.Name.Name
+		}
+
+		if name == "_" || name == "." || strings.TrimSpace(name) == "" {
+			continue
+		}
+
+		aliases[name] = path
+	}
+
+	return aliases
+}
+
+func stdlibSpacedCallLabel(stmt ast.Stmt, aliases importAliases) (string, bool) {
+	exprStmt, ok := stmt.(*ast.ExprStmt)
+
+	if !ok {
+		return "", false
+	}
+
+	call, ok := exprStmt.X.(*ast.CallExpr)
+
+	if !ok {
+		return "", false
+	}
+
+	selector, ok := call.Fun.(*ast.SelectorExpr)
+
+	if !ok {
+		return "", false
+	}
+
+	pkgIdent, ok := selector.X.(*ast.Ident)
+
+	if !ok {
+		return "", false
+	}
+
+	switch aliases[pkgIdent.Name] {
+	case "sort":
+		return "sort call", true
+	case "slices":
+		return "sort call", strings.HasPrefix(selector.Sel.Name, "Sort")
+	case "math/rand", "math/rand/v2":
+		return "rand call", true
+	default:
+		return "", false
+	}
 }
 
 func isTypeDeclStmt(stmt ast.Stmt) bool {

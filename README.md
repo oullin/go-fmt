@@ -1,8 +1,10 @@
 # go-fmt
 
+[![Go Reference](https://pkg.go.dev/badge/github.com/oullin/go-fmt/semantic.svg)](https://pkg.go.dev/github.com/oullin/go-fmt/semantic)
+[![Go 1.25](https://img.shields.io/badge/go-1.25-00ADD8?logo=go&logoColor=white)](https://go.dev/doc/go1.25)
 [![Tests](https://github.com/oullin/go-fmt/actions/workflows/tests.yml/badge.svg)](https://github.com/oullin/go-fmt/actions/workflows/tests.yml)
 [![Release](https://github.com/oullin/go-fmt/actions/workflows/release.yml/badge.svg)](https://github.com/oullin/go-fmt/actions/workflows/release.yml)
-[![Go 1.25](https://img.shields.io/badge/go-1.25-00ADD8?logo=go&logoColor=white)](https://go.dev/)
+[![Codecov](https://codecov.io/gh/oullin/go-fmt/graph/badge.svg?branch=main)](https://codecov.io/gh/oullin/go-fmt)
 [![Docker](https://img.shields.io/badge/docker-ghcr.io%2Foullin%2Fgo--fmt-2496ED?logo=docker&logoColor=white)](https://github.com/oullin/go-fmt/pkgs/container/go-fmt)
 
 **Semantic formatting for Go, with a Docker Compose-first workflow.**

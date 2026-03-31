@@ -68,3 +68,27 @@ jobs:
 
             - name: Go - Run all tests with the race detector
               run: make test-race
+
+    coverage:
+        needs: check
+        runs-on: ubuntu-latest
+
+        steps:
+            - uses: actions/checkout@v6
+              name: Checkout repository
+
+            - uses: actions/setup-go@v6
+              name: Install Go
+              with:
+                  go-version-file: semantic/go.mod
+                  cache-dependency-path: semantic/go.sum
+
+            - name: Go - Generate coverage report
+              run: go -C semantic test ./... -coverprofile=coverage.out -covermode=atomic -v
+
+            - uses: codecov/codecov-action@v5
+              name: Upload coverage to Codecov
+              with:
+                  token: ${{ secrets.CODECOV_TOKEN }}
+                  files: semantic/coverage.out
+                  fail_ci_if_error: false

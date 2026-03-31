@@ -330,6 +330,58 @@ func run() {
 }
 ```
 
+**Blank lines around stdlib sorting calls**
+
+Standalone stdlib sorting calls are separated from surrounding statements with a blank line. This applies to `sort.*(...)` and `slices.Sort*(...)`, including renamed imports.
+
+```go
+// before
+import stdsort "sort"
+
+func run(values []string) {
+    prepare(values)
+    stdsort.Strings(values)
+    consume(values)
+}
+
+// after
+import stdsort "sort"
+
+func run(values []string) {
+    prepare(values)
+
+    stdsort.Strings(values)
+
+    consume(values)
+}
+```
+
+**Blank lines around stdlib random calls**
+
+Standalone stdlib random calls are separated from surrounding statements with a blank line. This applies to `rand.*(...)` from `math/rand` and `math/rand/v2`, including renamed imports.
+
+```go
+// before
+import stdrand "math/rand"
+
+func run() {
+    prepare()
+    stdrand.Int()
+    consume()
+}
+
+// after
+import stdrand "math/rand"
+
+func run() {
+    prepare()
+
+    stdrand.Int()
+
+    consume()
+}
+```
+
 **Blank lines around type declarations**
 
 `type` declarations are separated from surrounding code with a blank line. The formatter reports this as `missing blank line around type definition`.

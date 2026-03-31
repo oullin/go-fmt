@@ -66,25 +66,26 @@ jobs:
                   go-version-file: semantic/go.mod
                   cache-dependency-path: semantic/go.sum
 
-            - name: Go - Run all tests with the race detector
-              run: make test-race
+            - name: Go - Run all tests with the race detector and coverage
+              run: go -C semantic test ./... -race -coverprofile=coverage.out -covermode=atomic -v
+
+            - uses: actions/upload-artifact@v4
+              name: Upload coverage artifact
+              with:
+                  name: semantic-coverage
+                  path: semantic/coverage.out
+                  if-no-files-found: error
 
     coverage:
-        needs: check
+        needs: test
         runs-on: ubuntu-latest
 
         steps:
-            - uses: actions/checkout@v6
-              name: Checkout repository
-
-            - uses: actions/setup-go@v6
-              name: Install Go
+            - uses: actions/download-artifact@v4
+              name: Download coverage artifact
               with:
-                  go-version-file: semantic/go.mod
-                  cache-dependency-path: semantic/go.sum
-
-            - name: Go - Generate coverage report
-              run: go -C semantic test ./... -coverprofile=coverage.out -covermode=atomic -v
+                  name: semantic-coverage
+                  path: semantic
 
             - uses: codecov/codecov-action@v5
               name: Upload coverage to Codecov

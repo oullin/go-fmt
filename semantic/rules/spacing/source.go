@@ -39,11 +39,14 @@ func applyInsertions(src []byte, insertions map[int]struct{}) []byte {
 	slices.Sort(offsets)
 
 	var out bytes.Buffer
+
 	last := 0
 
 	for _, offset := range offsets {
 		out.Write(src[last:offset])
+
 		out.WriteByte('\n')
+
 		last = offset
 	}
 

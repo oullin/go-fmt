@@ -112,12 +112,12 @@ If no paths are provided, both commands default to the current directory (`.`).
 
 Both commands accept the same flags:
 
-| Flag          | Description                                                                          | Default                           |
-| ------------- | ------------------------------------------------------------------------------------ | --------------------------------- |
-| `--config`    | Path to a `config.yml` file                                                                 | Auto-detected in the working tree |
-| `--cwd`       | Base path used for config discovery and relative output paths                               | Current working directory         |
-| `--format`    | Output format: `text`, `json`, or `agent`                                                   | `text`                            |
-| `--git-diff`  | Limit the run to tracked Go files changed versus `HEAD`                                     | Disabled                          |
+| Flag          | Description                                                                                      | Default                           |
+| ------------- | ------------------------------------------------------------------------------------------------ | --------------------------------- |
+| `--config`    | Path to a `config.yml` file                                                                      | Auto-detected in the working tree |
+| `--cwd`       | Base path used for config discovery and relative output paths                                    | Current working directory         |
+| `--format`    | Output format: `text`, `json`, or `agent`                                                        | `text`                            |
+| `--git-diff`  | Limit the run to tracked Go files changed versus `HEAD`                                          | Disabled                          |
 | `--host-path` | Absolute host path under `HOST_PROJECT_PATH`; intended for the Compose consumer flow; repeatable | Disabled unless env is set        |
 
 ### Common workflows
@@ -259,17 +259,17 @@ not_name:
     - '*.pb.go'
 ```
 
-| Field                              | Type | Default                          | Description                                              |
-| ---------------------------------- | ---- | -------------------------------- | -------------------------------------------------------- |
-| `rules.spacing.enabled`            | bool | `true`                           | Enable or disable blank-line semantics                   |
-| `rules.declaration_order.enabled`  | bool | `true`                           | Enable or disable top-level `var`/`type` reordering      |
-| `rules.callback_extraction.enabled`| bool | `true`                           | Enable or disable inline callback extraction             |
-| `rules.trimspace.enabled`          | bool | `true`                           | Enable or disable `strings.TrimSpace` empty-string rewrites |
-| `formatters.gofmt`                 | bool | `true`                           | Run `gofmt` after semantic rules                         |
-| `formatters.goimports`             | bool | `true`                           | Run `goimports` after `gofmt`                            |
-| `exclude`                          | list | `.git`, `node_modules`, `vendor` | Directory names to skip during tree walking              |
-| `not_path`                         | list | Empty                            | Substring matches against full file paths                |
-| `not_name`                         | list | Empty                            | Glob patterns matched against file names                 |
+| Field                               | Type | Default                          | Description                                                 |
+| ----------------------------------- | ---- | -------------------------------- | ----------------------------------------------------------- |
+| `rules.spacing.enabled`             | bool | `true`                           | Enable or disable blank-line semantics                      |
+| `rules.declaration_order.enabled`   | bool | `true`                           | Enable or disable top-level `var`/`type` reordering         |
+| `rules.callback_extraction.enabled` | bool | `true`                           | Enable or disable inline callback extraction                |
+| `rules.trimspace.enabled`           | bool | `true`                           | Enable or disable `strings.TrimSpace` empty-string rewrites |
+| `formatters.gofmt`                  | bool | `true`                           | Run `gofmt` after semantic rules                            |
+| `formatters.goimports`              | bool | `true`                           | Run `goimports` after `gofmt`                               |
+| `exclude`                           | list | `.git`, `node_modules`, `vendor` | Directory names to skip during tree walking                 |
+| `not_path`                          | list | Empty                            | Substring matches against full file paths                   |
+| `not_name`                          | list | Empty                            | Glob patterns matched against file names                    |
 
 ## Semantic Rules
 

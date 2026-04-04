@@ -17,6 +17,10 @@ import (
 
 type Rule struct{}
 
+type nameRegistry struct {
+	used map[string]struct{}
+}
+
 func New() Rule {
 	return Rule{}
 }
@@ -38,6 +42,7 @@ func analyse(filename string, src []byte) ([]rules.Violation, []byte, error) {
 	}
 
 	var violations []rules.Violation
+
 	changed := false
 
 	ast.Inspect(file, func(node ast.Node) bool {
@@ -100,6 +105,7 @@ func processBlock(block *ast.BlockStmt, registry *nameRegistry, fset *token.File
 
 func extractCallbacks(stmt ast.Stmt, registry *nameRegistry, fset *token.FileSet, filename string, violations *[]rules.Violation) ([]ast.Stmt, bool) {
 	var decls []ast.Stmt
+
 	changed := false
 
 	astutil.Apply(stmt, func(cursor *astutil.Cursor) bool {
@@ -247,7 +253,7 @@ func fieldVariableName(expr ast.Expr) string {
 }
 
 func lowerFirst(value string) string {
-	if value == "" {
+	if strings.TrimSpace(value) == "" {
 		return "callback"
 	}
 
@@ -255,10 +261,6 @@ func lowerFirst(value string) string {
 	runes[0] = []rune(strings.ToLower(string(runes[0])))[0]
 
 	return string(runes)
-}
-
-type nameRegistry struct {
-	used map[string]struct{}
 }
 
 func newNameRegistry(funcType *ast.FuncType, body *ast.BlockStmt) *nameRegistry {
@@ -297,7 +299,7 @@ func recordFieldList(used map[string]struct{}, fields *ast.FieldList) {
 }
 
 func (n *nameRegistry) unique(base string) string {
-	if base == "" {
+	if strings.TrimSpace(base) == "" {
 		base = "callbackFn"
 	}
 

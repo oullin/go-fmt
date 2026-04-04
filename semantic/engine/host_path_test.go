@@ -10,6 +10,7 @@ import (
 func TestResolveRunPathsRootMapsToWorkRoot(t *testing.T) {
 	workRoot := filepath.Join(string(filepath.Separator), "work")
 	hostRoot := filepath.Join(string(filepath.Separator), "host", "project")
+
 	t.Setenv(engine.HostRootEnv, hostRoot)
 
 	paths, err := engine.HostPath(hostRoot).Resolve(workRoot, nil)
@@ -27,6 +28,7 @@ func TestResolveRunPathsNestedDirectoryMapsToWorkRoot(t *testing.T) {
 	workRoot := filepath.Join(string(filepath.Separator), "work")
 	hostRoot := filepath.Join(string(filepath.Separator), "host", "project")
 	hostPath := filepath.Join(hostRoot, "pkg", "api")
+
 	t.Setenv(engine.HostRootEnv, hostRoot)
 
 	paths, err := engine.HostPath(hostPath).Resolve(workRoot, nil)
@@ -46,6 +48,7 @@ func TestResolveRunPathsSingleFileMapsToWorkRoot(t *testing.T) {
 	workRoot := filepath.Join(string(filepath.Separator), "work")
 	hostRoot := filepath.Join(string(filepath.Separator), "host", "project")
 	hostPath := filepath.Join(hostRoot, "pkg", "api", "sample.go")
+
 	t.Setenv(engine.HostRootEnv, hostRoot)
 
 	paths, err := engine.HostPath(hostPath).Resolve(workRoot, nil)
@@ -65,6 +68,7 @@ func TestResolveRunPathsRejectsOutsideRoot(t *testing.T) {
 	workRoot := filepath.Join(string(filepath.Separator), "work")
 	hostRoot := filepath.Join(string(filepath.Separator), "host", "project")
 	hostPath := filepath.Join(string(filepath.Separator), "host", "other")
+
 	t.Setenv(engine.HostRootEnv, hostRoot)
 
 	_, err := engine.HostPath(hostPath).Resolve(workRoot, nil)
@@ -77,6 +81,7 @@ func TestResolveRunPathsRejectsOutsideRoot(t *testing.T) {
 func TestResolveRunPathsRejectsMissingHostRoot(t *testing.T) {
 	workRoot := filepath.Join(string(filepath.Separator), "work")
 	hostPath := filepath.Join(string(filepath.Separator), "host", "project")
+
 	t.Setenv(engine.HostRootEnv, "")
 
 	_, err := engine.HostPath(hostPath).Resolve(workRoot, nil)
@@ -89,6 +94,7 @@ func TestResolveRunPathsRejectsMissingHostRoot(t *testing.T) {
 func TestResolveRunPathsRejectsPositionalPaths(t *testing.T) {
 	workRoot := filepath.Join(string(filepath.Separator), "work")
 	hostRoot := filepath.Join(string(filepath.Separator), "host", "project")
+
 	t.Setenv(engine.HostRootEnv, hostRoot)
 
 	_, err := engine.HostPath(hostRoot).Resolve(workRoot, []string{"."})
@@ -103,6 +109,7 @@ func TestResolveRunPathsSupportsMultipleHostPaths(t *testing.T) {
 	hostRoot := filepath.Join(string(filepath.Separator), "host", "project")
 	first := filepath.Join(hostRoot, "pkg", "api")
 	second := filepath.Join(hostRoot, "internal", "app")
+
 	t.Setenv(engine.HostRootEnv, hostRoot)
 
 	paths, err := engine.HostPaths{engine.HostPath(first), engine.HostPath(second)}.Resolve(workRoot, nil)

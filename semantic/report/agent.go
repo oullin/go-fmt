@@ -3,6 +3,7 @@ package report
 import (
 	"encoding/json"
 	"io"
+	"strings"
 
 	"github.com/oullin/go-fmt/semantic/engine"
 )
@@ -35,6 +36,7 @@ type agentViolation struct {
 
 func RenderAgent(w io.Writer, cwd string, report engine.Report) error {
 	encoder := json.NewEncoder(w)
+
 	encoder.SetIndent("", "  ")
 
 	return encoder.Encode(toAgentReport(cwd, report))
@@ -69,7 +71,7 @@ func toAgentReport(cwd string, report engine.Report) agentReport {
 			})
 		}
 
-		if result.Error != "" {
+		if strings.TrimSpace(result.Error) != "" {
 			out.Errors = append(out.Errors, jsonErrorMessage{
 				File:    rel,
 				Message: result.Error,

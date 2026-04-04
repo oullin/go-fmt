@@ -53,6 +53,7 @@ func analyse(filename string, src []byte) ([]rules.Violation, []byte, error) {
 
 func orderViolations(file *ast.File, fset *token.FileSet, filename string) []rules.Violation {
 	var violations []rules.Violation
+
 	highestCategory := declCategoryImport
 
 	for _, decl := range file.Decls {

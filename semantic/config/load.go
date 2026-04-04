@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/spf13/viper"
 )
@@ -15,6 +16,7 @@ func Load(cwd, explicitPath string) (Config, error) {
 	cfg := Default()
 
 	v := viper.New()
+
 	v.SetDefault("rules.spacing.enabled", cfg.Rules.Spacing.Enabled)
 	v.SetDefault("rules.declaration_order.enabled", cfg.Rules.DeclarationOrder.Enabled)
 	v.SetDefault("rules.callback_extraction.enabled", cfg.Rules.CallbackExtraction.Enabled)
@@ -25,7 +27,7 @@ func Load(cwd, explicitPath string) (Config, error) {
 	v.SetDefault("not_path", cfg.NotPath)
 	v.SetDefault("not_name", cfg.NotName)
 
-	if explicitPath != "" {
+	if strings.TrimSpace(explicitPath) != "" {
 		v.SetConfigFile(explicitPath)
 	} else {
 		v.SetConfigFile(filepath.Join(cwd, DefaultFileName))
@@ -34,7 +36,7 @@ func Load(cwd, explicitPath string) (Config, error) {
 	if err := v.ReadInConfig(); err != nil {
 		var notFound viper.ConfigFileNotFoundError
 
-		if explicitPath == "" && (errors.As(err, &notFound) || os.IsNotExist(err)) {
+		if strings.TrimSpace(explicitPath) == "" && (errors.As(err, &notFound) || os.IsNotExist(err)) {
 			return cfg, nil
 		}
 

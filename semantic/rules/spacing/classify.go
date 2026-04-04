@@ -10,6 +10,13 @@ import (
 	"strings"
 )
 
+var stdlibSpacingImports = map[string]string{
+	"sort":         "sort",
+	"slices":       "slices",
+	"math/rand":    "rand",
+	"math/rand/v2": "rand",
+}
+
 type importAliases map[string]string
 
 type boundary struct {
@@ -17,13 +24,6 @@ type boundary struct {
 	label    string
 	leading  bool
 	trailing bool
-}
-
-var stdlibSpacingImports = map[string]string{
-	"sort":         "sort",
-	"slices":       "slices",
-	"math/rand":    "rand",
-	"math/rand/v2": "rand",
 }
 
 func statementGapRule(current ast.Stmt, next ast.Stmt, aliases importAliases) (string, bool) {
@@ -214,7 +214,7 @@ func classifyCallBoundary(stmt ast.Stmt, aliases importAliases) (boundary, bool)
 }
 
 func sameFamily(current boundary, next boundary) bool {
-	return current.family != "" && current.family == next.family
+	return strings.TrimSpace(current.family) != "" && current.family == next.family
 }
 
 func standaloneCall(stmt ast.Stmt) (*ast.CallExpr, bool) {

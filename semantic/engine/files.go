@@ -16,6 +16,7 @@ func CollectGoFiles(paths []string, cfg config.Config) ([]string, error) {
 	}
 
 	var files []string
+
 	seen := map[string]struct{}{}
 
 	for _, root := range paths {

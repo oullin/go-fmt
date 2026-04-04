@@ -8,6 +8,7 @@ import (
 )
 
 type HostPath string
+
 type HostPaths []HostPath
 
 const HostRootEnv = "HOST_PROJECT_PATH"

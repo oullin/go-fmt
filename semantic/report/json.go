@@ -3,6 +3,7 @@ package report
 import (
 	"encoding/json"
 	"io"
+	"strings"
 
 	"github.com/oullin/go-fmt/semantic/engine"
 )
@@ -42,7 +43,7 @@ func toJSONReport(cwd string, report engine.Report) jsonReport {
 	for _, result := range report.Results {
 		rel := relativePath(cwd, result.File)
 
-		if result.Error != "" {
+		if strings.TrimSpace(result.Error) != "" {
 			out.Errors = append(out.Errors, jsonErrorMessage{
 				File:    rel,
 				Message: result.Error,

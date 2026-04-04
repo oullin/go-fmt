@@ -1,6 +1,10 @@
 package engine
 
-import "github.com/oullin/go-fmt/semantic/rules"
+import (
+	"strings"
+
+	"github.com/oullin/go-fmt/semantic/rules"
+)
 
 type FileResult struct {
 	File       string            `json:"file"`
@@ -32,7 +36,7 @@ func (r Report) ErrorCount() int {
 	total := 0
 
 	for _, result := range r.Results {
-		if result.Error != "" {
+		if strings.TrimSpace(result.Error) != "" {
 			total++
 		}
 	}

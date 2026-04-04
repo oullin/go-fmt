@@ -37,7 +37,9 @@ func analyse(filename string, src []byte) ([]rules.Violation, []byte, error) {
 	}
 
 	alias, importSpec := stringsImport(file)
+
 	var violations []rules.Violation
+
 	changed := false
 
 	ast.Inspect(file, func(node ast.Node) bool {

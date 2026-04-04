@@ -40,6 +40,7 @@ func run(args []string, stdout, stderr io.Writer) int {
 		return 0
 	default:
 		fmt.Fprintf(stderr, "unknown subcommand - {%q}\n\n", args[0])
+
 		printUsage(stderr)
 
 		return 1

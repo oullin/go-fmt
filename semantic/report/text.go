@@ -29,7 +29,7 @@ func RenderText(w io.Writer, cwd, mode string, report engine.Report) error {
 	}
 
 	for _, result := range report.Results {
-		if len(result.Violations) == 0 && result.Error == "" && !result.Changed {
+		if len(result.Violations) == 0 && strings.TrimSpace(result.Error) == "" && !result.Changed {
 			continue
 		}
 
@@ -39,7 +39,7 @@ func RenderText(w io.Writer, cwd, mode string, report engine.Report) error {
 			return err
 		}
 
-		if result.Error != "" {
+		if strings.TrimSpace(result.Error) != "" {
 			if _, err := color.New(color.FgRed).Fprintf(w, "    ! %s\n", result.Error); err != nil {
 				return err
 			}

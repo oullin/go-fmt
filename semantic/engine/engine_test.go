@@ -23,6 +23,7 @@ func defaultFormatters() []formatter.Formatter {
 
 func TestCollectGoFilesSkipsHiddenVendorAndGenerated(t *testing.T) {
 	root := t.TempDir()
+
 	mustWrite(t, filepath.Join(root, "root.go"), "package sample\n")
 	mustWrite(t, filepath.Join(root, "pkg", "nested.go"), "package sample\n")
 	mustWrite(t, filepath.Join(root, "vendor", "skip.go"), "package sample\n")
@@ -43,6 +44,7 @@ func TestCollectGoFilesSkipsHiddenVendorAndGenerated(t *testing.T) {
 func TestCheckReportsStyleChangesWithoutWriting(t *testing.T) {
 	root := t.TempDir()
 	path := filepath.Join(root, "sample.go")
+
 	mustWrite(t, path, `package sample
 
 func run() {
@@ -81,6 +83,7 @@ func run() {
 func TestFormatWritesSpacingChanges(t *testing.T) {
 	root := t.TempDir()
 	path := filepath.Join(root, "sample.go")
+
 	mustWrite(t, path, `package sample
 
 func run() {

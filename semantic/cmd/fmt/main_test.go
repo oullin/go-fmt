@@ -12,6 +12,7 @@ import (
 
 func TestRunCheckFailsOnStyleChanges(t *testing.T) {
 	dir := t.TempDir()
+
 	mustWrite(t, filepath.Join(dir, "sample.go"), `package sample
 
 func run() {
@@ -32,7 +33,7 @@ func run() {
 		t.Fatalf("unexpected stdout:\n%s", stdout)
 	}
 
-	if stderr != "" {
+	if strings.TrimSpace(stderr) != "" {
 		t.Fatalf("unexpected stderr:\n%s", stderr)
 	}
 }
@@ -40,6 +41,7 @@ func run() {
 func TestRunFormatWritesChanges(t *testing.T) {
 	dir := t.TempDir()
 	path := filepath.Join(dir, "sample.go")
+
 	mustWrite(t, path, `package sample
 
 func run() {
@@ -58,7 +60,7 @@ func run() {
 		t.Fatalf("unexpected stdout:\n%s", stdout)
 	}
 
-	if stderr != "" {
+	if strings.TrimSpace(stderr) != "" {
 		t.Fatalf("unexpected stderr:\n%s", stderr)
 	}
 
@@ -75,6 +77,7 @@ func run() {
 
 func TestRunAgentOutput(t *testing.T) {
 	dir := t.TempDir()
+
 	mustWrite(t, filepath.Join(dir, "sample.go"), `package sample
 
 func run() {
@@ -95,7 +98,7 @@ func run() {
 		t.Fatalf("unexpected agent output:\n%s", stdout)
 	}
 
-	if stderr != "" {
+	if strings.TrimSpace(stderr) != "" {
 		t.Fatalf("unexpected stderr:\n%s", stderr)
 	}
 }
@@ -103,6 +106,7 @@ func run() {
 func TestRunCheckWithHostPath(t *testing.T) {
 	dir := t.TempDir()
 	path := filepath.Join(dir, "sample.go")
+
 	mustWrite(t, path, `package sample
 
 func run() {
@@ -112,6 +116,7 @@ func run() {
 	println("next")
 }
 `)
+
 	t.Setenv(engine.HostRootEnv, dir)
 
 	exitCode, stdout, stderr := runCLI(t, dir, "check", "--host-path", path)
@@ -124,7 +129,7 @@ func run() {
 		t.Fatalf("unexpected stdout:\n%s", stdout)
 	}
 
-	if stderr != "" {
+	if strings.TrimSpace(stderr) != "" {
 		t.Fatalf("unexpected stderr:\n%s", stderr)
 	}
 }
@@ -132,6 +137,7 @@ func run() {
 func TestRunFormatWithHostPath(t *testing.T) {
 	dir := t.TempDir()
 	path := filepath.Join(dir, "sample.go")
+
 	mustWrite(t, path, `package sample
 
 func run() {
@@ -139,6 +145,7 @@ func run() {
 	return
 }
 `)
+
 	t.Setenv(engine.HostRootEnv, dir)
 
 	exitCode, stdout, stderr := runCLI(t, dir, "format", "--host-path", path)
@@ -151,7 +158,7 @@ func run() {
 		t.Fatalf("unexpected stdout:\n%s", stdout)
 	}
 
-	if stderr != "" {
+	if strings.TrimSpace(stderr) != "" {
 		t.Fatalf("unexpected stderr:\n%s", stderr)
 	}
 
@@ -169,6 +176,7 @@ func run() {
 func TestRunWithHostPathRequiresEnv(t *testing.T) {
 	dir := t.TempDir()
 	path := filepath.Join(dir, "sample.go")
+
 	mustWrite(t, path, "package sample\n")
 
 	exitCode, _, stderr := runCLI(t, dir, "check", "--host-path", path)
@@ -185,7 +193,9 @@ func TestRunWithHostPathRequiresEnv(t *testing.T) {
 func TestRunWithHostPathRejectsPositionalPaths(t *testing.T) {
 	dir := t.TempDir()
 	path := filepath.Join(dir, "sample.go")
+
 	mustWrite(t, path, "package sample\n")
+
 	t.Setenv(engine.HostRootEnv, dir)
 
 	exitCode, _, stderr := runCLI(t, dir, "check", "--host-path", path, dir)
@@ -226,7 +236,7 @@ func TestPrintUsage(t *testing.T) {
 				t.Errorf("expected exit code %d, got %d", expectedExitCode, exitCode)
 			}
 
-			if stdout != "" {
+			if strings.TrimSpace(stdout) != "" {
 				t.Errorf("expected empty stdout, got %q", stdout)
 			}
 
@@ -256,16 +266,19 @@ func TestVersion(t *testing.T) {
 		t.Errorf("expected stdout to contain version, got %q", stdout)
 	}
 
-	if stderr != "" {
+	if strings.TrimSpace(stderr) != "" {
 		t.Errorf("expected empty stderr, got %q", stderr)
 	}
 }
 
 func TestRunCheckWithGitDiffFiltersTextOutput(t *testing.T) {
 	dir := t.TempDir()
+
 	mustWrite(t, filepath.Join(dir, "changed.go"), "package sample\n\nfunc run() {\nif true {\nprintln(\"ok\")\n}\nprintln(\"next\")\n}\n")
 	mustWrite(t, filepath.Join(dir, "stale.go"), "package sample\n\nfunc stale() {\nif true {\nprintln(\"stale\")\n}\nprintln(\"keep\")\n}\n")
+
 	initGitRepo(t, dir)
+
 	runGit(t, dir, "add", ".")
 	runGit(t, dir, "commit", "-m", "initial")
 
@@ -285,16 +298,19 @@ func TestRunCheckWithGitDiffFiltersTextOutput(t *testing.T) {
 		t.Fatalf("expected only changed.go in output, got:\n%s", stdout)
 	}
 
-	if stderr != "" {
+	if strings.TrimSpace(stderr) != "" {
 		t.Fatalf("unexpected stderr:\n%s", stderr)
 	}
 }
 
 func TestRunJSONWithGitDiffFiltersResults(t *testing.T) {
 	dir := t.TempDir()
+
 	mustWrite(t, filepath.Join(dir, "changed.go"), "package sample\n\nfunc run() {\nif true {\nprintln(\"ok\")\n}\nprintln(\"next\")\n}\n")
 	mustWrite(t, filepath.Join(dir, "stale.go"), "package sample\n\nfunc stale() {\nif true {\nprintln(\"stale\")\n}\nprintln(\"keep\")\n}\n")
+
 	initGitRepo(t, dir)
+
 	runGit(t, dir, "add", ".")
 	runGit(t, dir, "commit", "-m", "initial")
 
@@ -314,16 +330,19 @@ func TestRunJSONWithGitDiffFiltersResults(t *testing.T) {
 		t.Fatalf("expected json output to reference only changed.go, got:\n%s", stdout)
 	}
 
-	if stderr != "" {
+	if strings.TrimSpace(stderr) != "" {
 		t.Fatalf("unexpected stderr:\n%s", stderr)
 	}
 }
 
 func TestRunAgentWithGitDiffFiltersResults(t *testing.T) {
 	dir := t.TempDir()
+
 	mustWrite(t, filepath.Join(dir, "changed.go"), "package sample\n\nfunc run() {\nif true {\nprintln(\"ok\")\n}\nprintln(\"next\")\n}\n")
 	mustWrite(t, filepath.Join(dir, "stale.go"), "package sample\n\nfunc stale() {\nif true {\nprintln(\"stale\")\n}\nprintln(\"keep\")\n}\n")
+
 	initGitRepo(t, dir)
+
 	runGit(t, dir, "add", ".")
 	runGit(t, dir, "commit", "-m", "initial")
 
@@ -343,7 +362,7 @@ func TestRunAgentWithGitDiffFiltersResults(t *testing.T) {
 		t.Fatalf("expected agent output to reference only changed.go, got:\n%s", stdout)
 	}
 
-	if stderr != "" {
+	if strings.TrimSpace(stderr) != "" {
 		t.Fatalf("unexpected stderr:\n%s", stderr)
 	}
 }
@@ -368,6 +387,7 @@ func runCLI(t *testing.T, workdir string, args ...string) (int, string, string) 
 	var stdout strings.Builder
 
 	var stderr strings.Builder
+
 	exitCode := run(args, &stdout, &stderr)
 
 	return exitCode, stdout.String(), stderr.String()

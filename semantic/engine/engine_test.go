@@ -10,6 +10,7 @@ import (
 	"github.com/oullin/go-fmt/semantic/engine"
 	"github.com/oullin/go-fmt/semantic/formatter"
 	"github.com/oullin/go-fmt/semantic/rules"
+	"github.com/oullin/go-fmt/semantic/rules/declaration_order"
 	"github.com/oullin/go-fmt/semantic/rules/spacing"
 )
 
@@ -110,6 +111,46 @@ func run() {
 
 	if !strings.Contains(string(content), "defer println(\"done\")\n\n\treturn") {
 		t.Fatalf("expected file to be rewritten, got:\n%s", content)
+	}
+}
+
+func TestFormatRepairsDetachedGoEmbedDirective(t *testing.T) {
+	root := t.TempDir()
+	path := filepath.Join(root, "sample.go")
+
+	mustWrite(t, path, `package sample
+
+import "embed"
+
+//go:embed foo.txt
+
+type runtime struct{}
+
+var rootTemplateFS embed.FS
+`)
+
+	report, err := engine.New(
+		config.Default(),
+		[]rules.Rule{declaration_order.New()},
+		defaultFormatters(),
+	).Format([]string{root})
+
+	if err != nil {
+		t.Fatalf("format: %v", err)
+	}
+
+	if report.Result != "fixed" {
+		t.Fatalf("expected fixed result, got %q", report.Result)
+	}
+
+	content, err := os.ReadFile(path)
+
+	if err != nil {
+		t.Fatalf("read file: %v", err)
+	}
+
+	if !strings.Contains(string(content), "//go:embed foo.txt\nvar rootTemplateFS embed.FS\n\ntype runtime struct{}") {
+		t.Fatalf("expected go:embed directive to remain attached to the var, got:\n%s", content)
 	}
 }
 

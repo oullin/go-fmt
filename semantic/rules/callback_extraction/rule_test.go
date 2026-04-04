@@ -74,6 +74,43 @@ func run() {
 	}
 }
 
+func TestLowerFirst(t *testing.T) {
+	tests := []struct {
+		name  string
+		input string
+		want  string
+	}{
+		{
+			name:  "ascii title case",
+			input: "Redirect",
+			want:  "redirect",
+		},
+		{
+			name:  "unicode title case",
+			input: "Éclair",
+			want:  "éclair",
+		},
+		{
+			name:  "whitespace only",
+			input: " \t\n ",
+			want:  "callback",
+		},
+		{
+			name:  "already lowercase",
+			input: "redirect",
+			want:  "redirect",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := lowerFirst(tt.input); got != tt.want {
+				t.Fatalf("lowerFirst(%q) = %q, want %q", tt.input, got, tt.want)
+			}
+		})
+	}
+}
+
 func writeTempGoFile(t *testing.T, content string) string {
 	t.Helper()
 

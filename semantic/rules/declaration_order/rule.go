@@ -11,6 +11,14 @@ import (
 	"github.com/oullin/go-fmt/semantic/rules"
 )
 
+const (
+	declCategoryImport = iota
+	declCategoryConst
+	declCategoryVar
+	declCategoryType
+	declCategoryOther
+)
+
 type Rule struct{}
 
 func New() Rule {
@@ -82,6 +90,7 @@ func orderViolations(file *ast.File, fset *token.FileSet, filename string) []rul
 
 func reorderDecls(file *ast.File) []ast.Decl {
 	imports := make([]ast.Decl, 0, len(file.Decls))
+	consts := make([]ast.Decl, 0, len(file.Decls))
 	vars := make([]ast.Decl, 0, len(file.Decls))
 	types := make([]ast.Decl, 0, len(file.Decls))
 	others := make([]ast.Decl, 0, len(file.Decls))
@@ -90,6 +99,8 @@ func reorderDecls(file *ast.File) []ast.Decl {
 		switch declCategory(decl) {
 		case declCategoryImport:
 			imports = append(imports, decl)
+		case declCategoryConst:
+			consts = append(consts, decl)
 		case declCategoryVar:
 			vars = append(vars, decl)
 		case declCategoryType:
@@ -101,19 +112,13 @@ func reorderDecls(file *ast.File) []ast.Decl {
 
 	reordered := make([]ast.Decl, 0, len(file.Decls))
 	reordered = append(reordered, imports...)
+	reordered = append(reordered, consts...)
 	reordered = append(reordered, vars...)
 	reordered = append(reordered, types...)
 	reordered = append(reordered, others...)
 
 	return reordered
 }
-
-const (
-	declCategoryImport = iota
-	declCategoryVar
-	declCategoryType
-	declCategoryOther
-)
 
 func declCategory(decl ast.Decl) int {
 	genDecl, ok := decl.(*ast.GenDecl)
@@ -125,6 +130,8 @@ func declCategory(decl ast.Decl) int {
 	switch genDecl.Tok {
 	case token.IMPORT:
 		return declCategoryImport
+	case token.CONST:
+		return declCategoryConst
 	case token.VAR:
 		return declCategoryVar
 	case token.TYPE:
@@ -136,10 +143,12 @@ func declCategory(decl ast.Decl) int {
 
 func violationMessage(category int) string {
 	switch category {
+	case declCategoryConst:
+		return "file-scope const declarations must appear after imports and before vars, types, and other declarations"
 	case declCategoryVar:
-		return "file-scope var declarations must appear before type declarations and other declarations"
+		return "file-scope var declarations must appear after consts and before types and other declarations"
 	case declCategoryType:
-		return "file-scope type declarations must appear after vars and before other declarations"
+		return "file-scope type declarations must appear after consts and vars and before other declarations"
 	default:
 		return "file-scope declarations are out of order"
 	}
@@ -166,10 +175,27 @@ func collapseEmbedSpacing(src []byte) []byte {
 
 		next := bytes.TrimSpace(lines[i+2])
 
-		if bytes.HasPrefix(next, []byte("var ")) || bytes.Equal(next, []byte("var (")) {
+		if isVarDeclStart(next) {
 			i++
 		}
 	}
 
 	return bytes.Join(out, []byte{'\n'})
+}
+
+func isVarDeclStart(line []byte) bool {
+	if !bytes.HasPrefix(line, []byte("var")) {
+		return false
+	}
+
+	if len(line) == len("var") {
+		return true
+	}
+
+	switch line[len("var")] {
+	case ' ', '\t', '\n', '\r', '\f', '\v', '(':
+		return true
+	default:
+		return false
+	}
 }

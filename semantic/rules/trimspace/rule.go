@@ -14,7 +14,22 @@ import (
 	"github.com/oullin/go-fmt/semantic/rules"
 )
 
+const (
+	stringsImportMissing stringsImportKind = iota
+	stringsImportDefault
+	stringsImportAlias
+	stringsImportDot
+	stringsImportBlank
+)
+
 type Rule struct{}
+
+type stringsImportKind int
+
+type stringsImportInfo struct {
+	kind stringsImportKind
+	name string
+}
 
 func New() Rule {
 	return Rule{}
@@ -36,7 +51,7 @@ func analyse(filename string, src []byte) ([]rules.Violation, []byte, error) {
 		return nil, nil, err
 	}
 
-	alias, importSpec := stringsImport(file)
+	importInfo := stringsImport(file)
 
 	var violations []rules.Violation
 
@@ -51,17 +66,17 @@ func analyse(filename string, src []byte) ([]rules.Violation, []byte, error) {
 
 		operand := nonEmptyStringOperand(binary)
 
-		if operand == nil || isTrimSpaceCall(*operand, alias) {
+		if operand == nil || isTrimSpaceCall(*operand, importInfo) {
 			return true
 		}
 
-		*operand = &ast.CallExpr{
-			Fun: &ast.SelectorExpr{
-				X:   ast.NewIdent(alias),
-				Sel: ast.NewIdent("TrimSpace"),
-			},
-			Args: []ast.Expr{*operand},
+		call, ok := trimSpaceCall(*operand, importInfo)
+
+		if !ok {
+			return true
 		}
+
+		*operand = call
 
 		violations = append(violations, rules.Violation{
 			Rule:    "trimspace",
@@ -78,10 +93,8 @@ func analyse(filename string, src []byte) ([]rules.Violation, []byte, error) {
 		return nil, src, nil
 	}
 
-	if importSpec == nil {
+	if importInfo.kind == stringsImportMissing {
 		astutil.AddImport(fset, file, "strings")
-	} else if importSpec.Name != nil && (importSpec.Name.Name == "_" || importSpec.Name.Name == ".") {
-		importSpec.Name = nil
 	}
 
 	var out bytes.Buffer
@@ -93,7 +106,7 @@ func analyse(filename string, src []byte) ([]rules.Violation, []byte, error) {
 	return violations, out.Bytes(), nil
 }
 
-func stringsImport(file *ast.File) (string, *ast.ImportSpec) {
+func stringsImport(file *ast.File) stringsImportInfo {
 	for _, spec := range file.Imports {
 		path, err := strconv.Unquote(spec.Path.Value)
 
@@ -102,18 +115,35 @@ func stringsImport(file *ast.File) (string, *ast.ImportSpec) {
 		}
 
 		if spec.Name == nil {
-			return "strings", spec
+			return stringsImportInfo{
+				kind: stringsImportDefault,
+				name: "strings",
+			}
 		}
 
 		switch spec.Name.Name {
-		case "_", ".":
-			return "strings", spec
+		case ".":
+			return stringsImportInfo{
+				kind: stringsImportDot,
+				name: ".",
+			}
+		case "_":
+			return stringsImportInfo{
+				kind: stringsImportBlank,
+				name: "_",
+			}
 		default:
-			return spec.Name.Name, spec
+			return stringsImportInfo{
+				kind: stringsImportAlias,
+				name: spec.Name.Name,
+			}
 		}
 	}
 
-	return "strings", nil
+	return stringsImportInfo{
+		kind: stringsImportMissing,
+		name: "strings",
+	}
 }
 
 func nonEmptyStringOperand(binary *ast.BinaryExpr) *ast.Expr {
@@ -133,11 +163,37 @@ func isEmptyStringLiteral(expr ast.Expr) bool {
 	return ok && lit.Kind == token.STRING && lit.Value == `""`
 }
 
-func isTrimSpaceCall(expr ast.Expr, alias string) bool {
+func trimSpaceCall(arg ast.Expr, info stringsImportInfo) (*ast.CallExpr, bool) {
+	switch info.kind {
+	case stringsImportBlank:
+		return nil, false
+	case stringsImportDot:
+		return &ast.CallExpr{
+			Fun:  ast.NewIdent("TrimSpace"),
+			Args: []ast.Expr{arg},
+		}, true
+	default:
+		return &ast.CallExpr{
+			Fun: &ast.SelectorExpr{
+				X:   ast.NewIdent(info.name),
+				Sel: ast.NewIdent("TrimSpace"),
+			},
+			Args: []ast.Expr{arg},
+		}, true
+	}
+}
+
+func isTrimSpaceCall(expr ast.Expr, info stringsImportInfo) bool {
 	call, ok := expr.(*ast.CallExpr)
 
 	if !ok {
 		return false
+	}
+
+	if info.kind == stringsImportDot {
+		ident, ok := call.Fun.(*ast.Ident)
+
+		return ok && ident.Name == "TrimSpace"
 	}
 
 	selector, ok := call.Fun.(*ast.SelectorExpr)
@@ -148,5 +204,5 @@ func isTrimSpaceCall(expr ast.Expr, alias string) bool {
 
 	ident, ok := selector.X.(*ast.Ident)
 
-	return ok && ident.Name == alias
+	return ok && ident.Name == info.name
 }

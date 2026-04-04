@@ -9,6 +9,7 @@ import (
 	"go/token"
 	"strconv"
 	"strings"
+	"unicode"
 
 	"golang.org/x/tools/go/ast/astutil"
 
@@ -258,7 +259,7 @@ func lowerFirst(value string) string {
 	}
 
 	runes := []rune(value)
-	runes[0] = []rune(strings.ToLower(string(runes[0])))[0]
+	runes[0] = unicode.ToLower(runes[0])
 
 	return string(runes)
 }

@@ -8,7 +8,7 @@ BUILD_DIR := bin
 BIN := $(BUILD_DIR)/$(APP)
 OXFMT_BIN := tooling/node_modules/.bin/oxfmt
 
-ARGS ?= . ## Files or directories to target
+ARGS ?= . ## With '.', format changed tracked and untracked files; set a path to target a specific subtree
 VERSION ?= $(shell git describe --tags --always --dirty 2>/dev/null || echo dev) ## Build version injected into binaries
 CGO_ENABLED ?= 0 ## CGO setting used for build and release
 DIST_DIR ?= dist ## Directory for release binaries

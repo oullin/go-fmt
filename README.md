@@ -167,7 +167,13 @@ services:
             - .:/work
         environment:
             HOST_PROJECT_PATH: ${PWD}
-        command: ['help']
+        # --host-path is repeatable; each path must stay under HOST_PROJECT_PATH.
+        command:
+            - format
+            - --host-path
+            - ${PWD}/pkg/api
+            - --host-path
+            - ${PWD}/internal/app
 ```
 
 Download it into your project:
@@ -262,7 +268,7 @@ not_name:
 | Field                               | Type | Default                          | Description                                                 |
 | ----------------------------------- | ---- | -------------------------------- | ----------------------------------------------------------- |
 | `rules.spacing.enabled`             | bool | `true`                           | Enable or disable blank-line semantics                      |
-| `rules.declaration_order.enabled`   | bool | `true`                           | Enable or disable top-level `var`/`type` reordering         |
+| `rules.declaration_order.enabled`   | bool | `true`                           | Enable or disable top-level `const`/`var`/`type` reordering |
 | `rules.callback_extraction.enabled` | bool | `true`                           | Enable or disable inline callback extraction                |
 | `rules.trimspace.enabled`           | bool | `true`                           | Enable or disable `strings.TrimSpace` empty-string rewrites |
 | `formatters.gofmt`                  | bool | `true`                           | Run `gofmt` after semantic rules                            |
@@ -414,11 +420,13 @@ The spacing rule inspects statement lists inside:
 Top-level declarations are reordered to:
 
 1. imports
-2. file-scope `var`
-3. file-scope `type`
-4. everything else
+2. file-scope `const`
+3. file-scope `var`
+4. file-scope `type`
+5. everything else
 
 Directive-bound declarations remain attached to their directives. In particular, `//go:embed` stays immediately above the `var` it applies to.
+If a `//go:embed` directive is separated from its `var` by a misplaced top-level declaration such as a `type`, formatting normalizes the file by moving the bound `var` directly under the directive.
 
 ### `callback_extraction`
 
@@ -427,6 +435,7 @@ Inline func literals used as composite literal field values are extracted into l
 ### `trimspace`
 
 Empty-string comparisons are rewritten to use `strings.TrimSpace(...)`, including `== ""`, `!= ""`, reversed literal comparisons, and control-flow init conditions.
+When a `strings` import already exists, the rule preserves its style: aliased imports reuse the alias, dot imports emit `TrimSpace(...)`, and blank imports are left unchanged.
 
 ## File Discovery
 
@@ -563,6 +572,7 @@ make help
 pnpm turbo run check --filter=semantic
 pnpm turbo run check --filter=tooling
 make format
+make format ARGS=semantic
 make build
 make release
 make test
@@ -576,13 +586,13 @@ make clean
 
 ### Make variables
 
-| Variable            | Default                                             | Description                           |
-| ------------------- | --------------------------------------------------- | ------------------------------------- |
-| `ARGS`              | `.`                                                 | Files or directories to target        |
-| `VERSION`           | `git describe ...` or `dev`                         | Build version injected into binaries  |
-| `CGO_ENABLED`       | `0`                                                 | CGO setting for build and release     |
-| `DIST_DIR`          | `dist`                                              | Output directory for release binaries |
-| `RELEASE_PLATFORMS` | `darwin/amd64 darwin/arm64 linux/amd64 linux/arm64` | Platforms built by `make release`     |
+| Variable            | Default                                             | Description                                                                                   |
+| ------------------- | --------------------------------------------------- | --------------------------------------------------------------------------------------------- |
+| `ARGS`              | `.`                                                 | With `.`, format changed tracked and untracked files; set a path to target a specific subtree |
+| `VERSION`           | `git describe ...` or `dev`                         | Build version injected into binaries                                                          |
+| `CGO_ENABLED`       | `0`                                                 | CGO setting for build and release                                                             |
+| `DIST_DIR`          | `dist`                                              | Output directory for release binaries                                                         |
+| `RELEASE_PLATFORMS` | `darwin/amd64 darwin/arm64 linux/amd64 linux/arm64` | Platforms built by `make release`                                                             |
 
 ### Examples
 

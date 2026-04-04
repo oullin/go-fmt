@@ -59,6 +59,122 @@ func run(value string) bool {
 	}
 }
 
+func TestApplyPreservesDotImport(t *testing.T) {
+	path := writeTempGoFile(t, `package sample
+
+import . "strings"
+
+func run(value string) bool {
+	return value != ""
+}
+`)
+
+	violations, formatted, err := New().Apply(path, mustReadFile(t, path))
+
+	if err != nil {
+		t.Fatalf("apply: %v", err)
+	}
+
+	if len(violations) != 1 {
+		t.Fatalf("expected 1 violation, got %d", len(violations))
+	}
+
+	if !strings.Contains(string(formatted), "import . \"strings\"") {
+		t.Fatalf("expected dot import to be preserved, got:\n%s", formatted)
+	}
+
+	if !strings.Contains(string(formatted), "return TrimSpace(value) != \"\"") {
+		t.Fatalf("expected dot import rewrite, got:\n%s", formatted)
+	}
+}
+
+func TestApplySkipsBlankImport(t *testing.T) {
+	source := `package sample
+
+import _ "strings"
+
+func run(value string) bool {
+	return value != ""
+}
+`
+	path := writeTempGoFile(t, source)
+
+	violations, formatted, err := New().Apply(path, mustReadFile(t, path))
+
+	if err != nil {
+		t.Fatalf("apply: %v", err)
+	}
+
+	if len(violations) != 0 {
+		t.Fatalf("expected no violations, got %d", len(violations))
+	}
+
+	if string(formatted) != source {
+		t.Fatalf("expected blank import source to be unchanged, got:\n%s", formatted)
+	}
+}
+
+func TestApplyDoesNotWrapExistingTrimSpaceCalls(t *testing.T) {
+	testCases := []struct {
+		name   string
+		source string
+	}{
+		{
+			name: "default import",
+			source: `package sample
+
+import "strings"
+
+func run(value string) bool {
+	return strings.TrimSpace(value) != ""
+}
+`,
+		},
+		{
+			name: "alias import",
+			source: `package sample
+
+import stdstrings "strings"
+
+func run(value string) bool {
+	return stdstrings.TrimSpace(value) != ""
+}
+`,
+		},
+		{
+			name: "dot import",
+			source: `package sample
+
+import . "strings"
+
+func run(value string) bool {
+	return TrimSpace(value) != ""
+}
+`,
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			path := writeTempGoFile(t, tc.source)
+
+			violations, formatted, err := New().Apply(path, mustReadFile(t, path))
+
+			if err != nil {
+				t.Fatalf("apply: %v", err)
+			}
+
+			if len(violations) != 0 {
+				t.Fatalf("expected no violations, got %d", len(violations))
+			}
+
+			if string(formatted) != tc.source {
+				t.Fatalf("expected source to be unchanged, got:\n%s", formatted)
+			}
+		})
+	}
+}
+
 func writeTempGoFile(t *testing.T, content string) string {
 	t.Helper()
 

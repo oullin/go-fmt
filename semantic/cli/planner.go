@@ -3,6 +3,7 @@ package cli
 import (
 	"fmt"
 	"os"
+	"path/filepath"
 	"strings"
 
 	"github.com/oullin/go-fmt/semantic/config"
@@ -90,6 +91,12 @@ func (p Planner) Build(options Options) (Plan, error) {
 
 	if strings.TrimSpace(options.ReportRoot) != "" {
 		reportRoot = options.ReportRoot
+	}
+
+	reportRoot, err = filepath.Abs(reportRoot)
+
+	if err != nil {
+		return Plan{}, fmt.Errorf("resolve report root: %w", err)
 	}
 
 	cfg, err := config.Load(reportRoot, options.ConfigPath)

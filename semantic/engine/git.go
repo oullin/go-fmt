@@ -15,7 +15,19 @@ func GitDiffGoFiles(root string) ([]string, error) {
 		return nil, fmt.Errorf("resolve git diff root: empty root")
 	}
 
-	cmd := exec.Command("git", "-C", root, "diff", "--name-only", "--diff-filter=ACMR", "HEAD")
+	absRoot, err := filepath.Abs(root)
+
+	if err != nil {
+		return nil, fmt.Errorf("resolve git diff root: %w", err)
+	}
+
+	repoRoot, err := gitRepoRoot(absRoot)
+
+	if err != nil {
+		return nil, err
+	}
+
+	cmd := exec.Command("git", "-C", absRoot, "diff", "--name-only", "--diff-filter=ACMR", "HEAD")
 
 	output, err := cmd.Output()
 
@@ -37,7 +49,7 @@ func GitDiffGoFiles(root string) ([]string, error) {
 			continue
 		}
 
-		path := filepath.Join(root, string(line))
+		path := filepath.Join(repoRoot, filepath.FromSlash(string(line)))
 
 		if filepath.Ext(path) != ".go" {
 			continue
@@ -49,4 +61,22 @@ func GitDiffGoFiles(root string) ([]string, error) {
 	}
 
 	return files, nil
+}
+
+func gitRepoRoot(root string) (string, error) {
+	cmd := exec.Command("git", "-C", root, "rev-parse", "--show-toplevel")
+
+	output, err := cmd.Output()
+
+	if err != nil {
+		var exitErr *exec.ExitError
+
+		if errors.As(err, &exitErr) {
+			return "", fmt.Errorf("git rev-parse: %s", strings.TrimSpace(string(exitErr.Stderr)))
+		}
+
+		return "", fmt.Errorf("git rev-parse: %w", err)
+	}
+
+	return strings.TrimSpace(string(output)), nil
 }

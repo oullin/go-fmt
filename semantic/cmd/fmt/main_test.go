@@ -75,6 +75,46 @@ func run() {
 	}
 }
 
+func TestRunFormatRepairsDetachedGoEmbedDirective(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "sample.go")
+
+	mustWrite(t, path, `package sample
+
+import "embed"
+
+//go:embed foo.txt
+
+type runtime struct{}
+
+var rootTemplateFS embed.FS
+`)
+
+	exitCode, stdout, stderr := runCLI(t, dir, "format", dir)
+
+	if exitCode != 0 {
+		t.Fatalf("expected exit code 0, got %d", exitCode)
+	}
+
+	if !strings.Contains(stdout, "Result: fixed") {
+		t.Fatalf("unexpected stdout:\n%s", stdout)
+	}
+
+	if strings.TrimSpace(stderr) != "" {
+		t.Fatalf("unexpected stderr:\n%s", stderr)
+	}
+
+	content, err := os.ReadFile(path)
+
+	if err != nil {
+		t.Fatalf("read file: %v", err)
+	}
+
+	if !strings.Contains(string(content), "//go:embed foo.txt\nvar rootTemplateFS embed.FS\n\ntype runtime struct{}") {
+		t.Fatalf("expected go:embed directive to remain attached to the var, got:\n%s", content)
+	}
+}
+
 func TestRunAgentOutput(t *testing.T) {
 	dir := t.TempDir()
 
@@ -367,6 +407,102 @@ func TestRunAgentWithGitDiffFiltersResults(t *testing.T) {
 	}
 }
 
+func TestRunCheckWithGitDiffAndHostPathsFiltersComposeMappedPaths(t *testing.T) {
+	hostRoot := t.TempDir()
+	workRoot := t.TempDir()
+	hostAPI := filepath.Join(hostRoot, "pkg", "api")
+	hostApp := filepath.Join(hostRoot, "internal", "app")
+
+	mustWrite(t, filepath.Join(workRoot, "pkg", "api", "changed.go"), "package sample\n\nfunc run() {\nif true {\nprintln(\"ok\")\n}\nprintln(\"next\")\n}\n")
+	mustWrite(t, filepath.Join(workRoot, "internal", "app", "stale.go"), "package sample\n\nfunc stale() {\nif true {\nprintln(\"stale\")\n}\nprintln(\"keep\")\n}\n")
+
+	initGitRepo(t, workRoot)
+
+	runGit(t, workRoot, "add", ".")
+	runGit(t, workRoot, "commit", "-m", "initial")
+
+	mustWrite(t, filepath.Join(workRoot, "pkg", "api", "changed.go"), "package sample\n\nfunc run() {\nif true {\nprintln(\"ok\")\n}\nprintln(\"next\")\nprintln(\"tail\")\n}\n")
+
+	t.Setenv(engine.HostRootEnv, hostRoot)
+
+	exitCode, stdout, stderr := runCLI(t, workRoot, "check", "--git-diff", "--host-path", hostAPI, "--host-path", hostApp)
+
+	if exitCode != 1 {
+		t.Fatalf("expected exit code 1, got %d", exitCode)
+	}
+
+	if !strings.Contains(stdout, "Checked 1 file(s).") {
+		t.Fatalf("expected one diff-selected file, got:\n%s", stdout)
+	}
+
+	if !strings.Contains(stdout, filepath.ToSlash(filepath.Join("pkg", "api", "changed.go"))) || strings.Contains(stdout, "stale.go") {
+		t.Fatalf("expected only the compose-mapped changed file in output, got:\n%s", stdout)
+	}
+
+	if strings.TrimSpace(stderr) != "" {
+		t.Fatalf("unexpected stderr:\n%s", stderr)
+	}
+}
+
+func TestRunFormatWithGitDiffAndHostPathFormatsOnlyComposeMappedSubtree(t *testing.T) {
+	hostRoot := t.TempDir()
+	workRoot := t.TempDir()
+	hostAPI := filepath.Join(hostRoot, "pkg", "api")
+	changedPath := filepath.Join(workRoot, "pkg", "api", "changed.go")
+	outsidePath := filepath.Join(workRoot, "internal", "app", "outside.go")
+
+	mustWrite(t, changedPath, "package sample\n\nfunc run() {\nprintln(\"ok\")\n}\n")
+	mustWrite(t, outsidePath, "package sample\n\nfunc run() {\nprintln(\"other\")\n}\n")
+
+	initGitRepo(t, workRoot)
+
+	runGit(t, workRoot, "add", ".")
+	runGit(t, workRoot, "commit", "-m", "initial")
+
+	mustWrite(t, changedPath, "package sample\n\nfunc run() {\n\tdefer println(\"done\")\n\treturn\n}\n")
+	mustWrite(t, outsidePath, "package sample\n\nfunc run() {\n\tdefer println(\"skip\")\n\treturn\n}\n")
+
+	t.Setenv(engine.HostRootEnv, hostRoot)
+
+	exitCode, stdout, stderr := runCLI(t, workRoot, "format", "--git-diff", "--host-path", hostAPI)
+
+	if exitCode != 0 {
+		t.Fatalf("expected exit code 0, got %d", exitCode)
+	}
+
+	if !strings.Contains(stdout, "Formatted 1 file(s).") {
+		t.Fatalf("expected one formatted file, got:\n%s", stdout)
+	}
+
+	if strings.Contains(stdout, "outside.go") {
+		t.Fatalf("expected compose target restriction to exclude outside.go, got:\n%s", stdout)
+	}
+
+	changedContent, err := os.ReadFile(changedPath)
+
+	if err != nil {
+		t.Fatalf("read changed file: %v", err)
+	}
+
+	if !strings.Contains(string(changedContent), "defer println(\"done\")\n\n\treturn") {
+		t.Fatalf("expected mapped file to be formatted, got:\n%s", changedContent)
+	}
+
+	outsideContent, err := os.ReadFile(outsidePath)
+
+	if err != nil {
+		t.Fatalf("read outside file: %v", err)
+	}
+
+	if strings.Contains(string(outsideContent), "defer println(\"skip\")\n\n\treturn") {
+		t.Fatalf("expected outside file to remain untouched, got:\n%s", outsideContent)
+	}
+
+	if strings.TrimSpace(stderr) != "" {
+		t.Fatalf("unexpected stderr:\n%s", stderr)
+	}
+}
+
 func runCLI(t *testing.T, workdir string, args ...string) (int, string, string) {
 	t.Helper()
 
@@ -395,6 +531,10 @@ func runCLI(t *testing.T, workdir string, args ...string) (int, string, string) 
 
 func mustWrite(t *testing.T, path string, content string) {
 	t.Helper()
+
+	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+		t.Fatalf("mkdir: %v", err)
+	}
 
 	if err := os.WriteFile(path, []byte(content), 0o644); err != nil {
 		t.Fatalf("write file: %v", err)

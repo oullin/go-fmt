@@ -127,3 +127,42 @@ func run(l locker) {
 		t.Fatalf("expected blank line before RUnlock, got:\n%s", formatted)
 	}
 }
+
+func TestApplyFindsMutexReadLockAndUnlockSpacingForIdentifierReceiver(t *testing.T) {
+	path := writeTempGoFile(t, `package sample
+
+type mutex struct{}
+
+func (mutex) RLock() {}
+func (mutex) RUnlock() {}
+
+func run() {
+	var mu mutex
+	mu.RLock()
+	println("locked")
+	mu.RUnlock()
+}
+`)
+
+	violations, formatted, err := New().Apply(path, mustReadFile(t, path))
+
+	if err != nil {
+		t.Fatalf("apply: %v", err)
+	}
+
+	if len(violations) != 3 {
+		t.Fatalf("expected 3 violations, got %d", len(violations))
+	}
+
+	if !strings.Contains(string(formatted), "var mu mutex\n\n\tmu.RLock()") {
+		t.Fatalf("expected blank line before RLock, got:\n%s", formatted)
+	}
+
+	if !strings.Contains(string(formatted), "mu.RLock()\n\n\tprintln(\"locked\")") {
+		t.Fatalf("expected blank line after RLock, got:\n%s", formatted)
+	}
+
+	if !strings.Contains(string(formatted), "println(\"locked\")\n\n\tmu.RUnlock()") {
+		t.Fatalf("expected blank line before RUnlock, got:\n%s", formatted)
+	}
+}

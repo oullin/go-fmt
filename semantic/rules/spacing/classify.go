@@ -339,9 +339,18 @@ func matchesSelectorChain(expr ast.Expr, receiverName, methodName string) bool {
 		return false
 	}
 
-	receiver, ok := selector.X.(*ast.SelectorExpr)
+	return matchesIdentOrTerminalSelector(selector.X, receiverName)
+}
 
-	return ok && receiver.Sel.Name == receiverName
+func matchesIdentOrTerminalSelector(expr ast.Expr, name string) bool {
+	switch typed := expr.(type) {
+	case *ast.Ident:
+		return typed.Name == name
+	case *ast.SelectorExpr:
+		return typed.Sel.Name == name
+	default:
+		return false
+	}
 }
 
 func renderNode(node ast.Node) string {

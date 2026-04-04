@@ -30,11 +30,22 @@ Use the maintained consumer Compose file from [`examples/consumer/go-fmt.compose
 ```bash
 curl -o go-fmt.compose.yaml https://raw.githubusercontent.com/oullin/go-fmt/main/examples/consumer/go-fmt.compose.yaml
 
-docker compose -f go-fmt.compose.yaml run --rm go-fmt check .
-docker compose -f go-fmt.compose.yaml run --rm go-fmt format .
+docker compose -f go-fmt.compose.yaml run --rm go-fmt
+docker compose -f go-fmt.compose.yaml run --rm go-fmt check --host-path "$PWD/pkg/api" --host-path "$PWD/internal/app"
 ```
 
 This is the recommended integration path. It keeps the command short, the container configuration reusable, and the toolchain identical across machines and CI.
+
+Inside a downstream app repository, the flow looks like this:
+
+```text
+your-app/
+├── go-fmt.compose.yaml
+├── internal/app/
+└── pkg/api/
+```
+
+The first command uses the service's default `command:` from `go-fmt.compose.yaml`, which formats the configured mounted paths. The second command overrides that default to run `check`, so it repeats the same `--host-path` arguments explicitly.
 
 ### Local install
 
@@ -182,12 +193,25 @@ Download it into your project:
 curl -o go-fmt.compose.yaml https://raw.githubusercontent.com/oullin/go-fmt/main/examples/consumer/go-fmt.compose.yaml
 ```
 
-Then run:
+If your app repository has Go code under `pkg/api` and `internal/app`, run from the app repo root:
 
 ```bash
-docker compose -f go-fmt.compose.yaml run --rm go-fmt check .
-docker compose -f go-fmt.compose.yaml run --rm go-fmt format .
+docker compose -f go-fmt.compose.yaml run --rm go-fmt
+docker compose -f go-fmt.compose.yaml run --rm go-fmt check --host-path "$PWD/pkg/api" --host-path "$PWD/internal/app"
 ```
+
+The first command uses the service's default `command:` from the Compose file:
+
+```yaml
+command:
+    - format
+    - --host-path
+    - ${PWD}/pkg/api
+    - --host-path
+    - ${PWD}/internal/app
+```
+
+If your layout differs, update those `--host-path` values in `go-fmt.compose.yaml`, and when you override the service command with `check` or another subcommand, pass the same host paths again on the `docker compose run` command line.
 
 ### Why Compose is the default recommendation
 
@@ -201,8 +225,8 @@ docker compose -f go-fmt.compose.yaml run --rm go-fmt format .
 If your project already defines a `go-fmt` service, use it the same way:
 
 ```bash
-docker compose -f api/docker.api.compose.yaml run --rm go-fmt check .
-docker compose -f api/docker.api.compose.yaml run --rm go-fmt format .
+docker compose -f api/docker.api.compose.yaml run --rm go-fmt
+docker compose -f api/docker.api.compose.yaml run --rm go-fmt check --host-path "$PWD/pkg/api" --host-path "$PWD/internal/app"
 ```
 
 ### Shared Compose files
@@ -210,11 +234,11 @@ docker compose -f api/docker.api.compose.yaml run --rm go-fmt format .
 If the Compose file lives outside the project you want to format, pass `--project-directory "$PWD"` so the current project is mounted instead of the directory that stores the Compose file:
 
 ```bash
-docker compose -f /path/to/go-fmt.compose.yaml --project-directory "$PWD" run --rm go-fmt check .
-docker compose -f /path/to/go-fmt.compose.yaml --project-directory "$PWD" run --rm go-fmt format .
+docker compose -f /path/to/go-fmt.compose.yaml --project-directory "$PWD" run --rm go-fmt
+docker compose -f /path/to/go-fmt.compose.yaml --project-directory "$PWD" run --rm go-fmt check --host-path "$PWD/pkg/api" --host-path "$PWD/internal/app"
 ```
 
-To target mounted subdirectories with repeated `--host-path`:
+To target mounted subdirectories with repeated `--host-path` while overriding the service command:
 
 ```bash
 docker compose -f /path/to/go-fmt.compose.yaml --project-directory "$PWD" run --rm go-fmt format --host-path "$PWD/pkg/api" --host-path "$PWD/internal/app"

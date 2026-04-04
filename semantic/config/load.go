@@ -16,6 +16,9 @@ func Load(cwd, explicitPath string) (Config, error) {
 
 	v := viper.New()
 	v.SetDefault("rules.spacing.enabled", cfg.Rules.Spacing.Enabled)
+	v.SetDefault("rules.declaration_order.enabled", cfg.Rules.DeclarationOrder.Enabled)
+	v.SetDefault("rules.callback_extraction.enabled", cfg.Rules.CallbackExtraction.Enabled)
+	v.SetDefault("rules.trimspace.enabled", cfg.Rules.TrimSpace.Enabled)
 	v.SetDefault("formatters.gofmt", cfg.Formatters.Gofmt)
 	v.SetDefault("formatters.goimports", cfg.Formatters.Goimports)
 	v.SetDefault("exclude", cfg.Exclude)

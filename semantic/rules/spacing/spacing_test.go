@@ -78,69 +78,6 @@ func run(v int) {
 	}
 }
 
-func TestApplyFlagsTypeDefinitionsAfterFunctions(t *testing.T) {
-	path := writeTempGoFile(t, `package sample
-
-func run() {}
-
-type later struct{}
-`)
-
-	violations, _, err := New().Apply(path, mustReadFile(t, path))
-
-	if err != nil {
-		t.Fatalf("apply: %v", err)
-	}
-
-	if len(violations) != 1 {
-		t.Fatalf("expected 1 violation, got %d", len(violations))
-	}
-
-	if !strings.Contains(violations[0].Message, "type definitions must appear") {
-		t.Fatalf("unexpected message %q", violations[0].Message)
-	}
-}
-
-func TestApplyFormatsTypeDefinitionsAtBeginningOfFile(t *testing.T) {
-	path := writeTempGoFile(t, `package sample
-
-import "fmt"
-
-func run() {
-	fmt.Println("ok")
-}
-
-// later docs
-type later struct{}
-`)
-
-	violations, formatted, err := New().Apply(path, mustReadFile(t, path))
-
-	if err != nil {
-		t.Fatalf("apply: %v", err)
-	}
-
-	if len(violations) != 1 {
-		t.Fatalf("expected 1 violation, got %d", len(violations))
-	}
-
-	want := `package sample
-
-import "fmt"
-
-// later docs
-type later struct{}
-
-func run() {
-	fmt.Println("ok")
-}
-`
-
-	if string(formatted) != want {
-		t.Fatalf("unexpected formatted output:\n%s", formatted)
-	}
-}
-
 func TestApplyFindsVarSpacing(t *testing.T) {
 	path := writeTempGoFile(t, `package sample
 
@@ -584,7 +521,7 @@ func run() {
 	}
 }
 
-func TestApplyIgnoresSortLikeSelectorsWithoutStdlibImport(t *testing.T) {
+func TestApplyFormatsBlankLinesAroundGenericSelectorCalls(t *testing.T) {
 	path := writeTempGoFile(t, `package sample
 
 type sorter struct{}
@@ -604,16 +541,16 @@ func run(values []string) {
 		t.Fatalf("apply: %v", err)
 	}
 
-	if len(violations) != 0 {
-		t.Fatalf("expected no violations, got %d", len(violations))
+	if len(violations) != 2 {
+		t.Fatalf("expected 2 violations, got %d", len(violations))
 	}
 
-	if string(formatted) != string(mustReadFile(t, path)) {
-		t.Fatalf("expected unchanged output, got:\n%s", formatted)
+	if !strings.Contains(string(formatted), "println(\"start\")\n\n\tsort := sorter{}\n\n\tsort.Strings(values)") {
+		t.Fatalf("expected generic selector call spacing, got:\n%s", formatted)
 	}
 }
 
-func TestApplyIgnoresRandLikeSelectorsWithoutStdlibImport(t *testing.T) {
+func TestApplyFormatsBlankLinesAroundGenericMethodCalls(t *testing.T) {
 	path := writeTempGoFile(t, `package sample
 
 type randomizer struct{}
@@ -633,16 +570,16 @@ func run() {
 		t.Fatalf("apply: %v", err)
 	}
 
-	if len(violations) != 0 {
-		t.Fatalf("expected no violations, got %d", len(violations))
+	if len(violations) != 2 {
+		t.Fatalf("expected 2 violations, got %d", len(violations))
 	}
 
-	if string(formatted) != string(mustReadFile(t, path)) {
-		t.Fatalf("expected unchanged output, got:\n%s", formatted)
+	if !strings.Contains(string(formatted), "println(\"start\")\n\n\trand := randomizer{}\n\n\trand.Int()") {
+		t.Fatalf("expected generic method call spacing, got:\n%s", formatted)
 	}
 }
 
-func TestApplyIgnoresSlicesLikeSelectorsWithoutStdlibImport(t *testing.T) {
+func TestApplyFormatsBlankLineBeforeGenericCallAfterAssignment(t *testing.T) {
 	path := writeTempGoFile(t, `package sample
 
 type sliceOps struct{}
@@ -662,12 +599,12 @@ func run(values []int) {
 		t.Fatalf("apply: %v", err)
 	}
 
-	if len(violations) != 0 {
-		t.Fatalf("expected no violations, got %d", len(violations))
+	if len(violations) != 2 {
+		t.Fatalf("expected 2 violations, got %d", len(violations))
 	}
 
-	if string(formatted) != string(mustReadFile(t, path)) {
-		t.Fatalf("expected unchanged output, got:\n%s", formatted)
+	if !strings.Contains(string(formatted), "println(\"start\")\n\n\tslices := sliceOps{}\n\n\tslices.Sort(values)") {
+		t.Fatalf("expected generic call spacing, got:\n%s", formatted)
 	}
 }
 

@@ -2,6 +2,7 @@ package main
 
 import (
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -229,7 +230,7 @@ func TestPrintUsage(t *testing.T) {
 				t.Errorf("expected empty stdout, got %q", stdout)
 			}
 
-			if !strings.Contains(stderr, "go-fmt check [--host-path /absolute/host/path] [paths...]") {
+			if !strings.Contains(stderr, "go-fmt check [--git-diff] [--host-path /absolute/host/path ...] [paths...]") {
 				t.Errorf("expected stderr to contain usage, got %q", stderr)
 			}
 
@@ -257,6 +258,93 @@ func TestVersion(t *testing.T) {
 
 	if stderr != "" {
 		t.Errorf("expected empty stderr, got %q", stderr)
+	}
+}
+
+func TestRunCheckWithGitDiffFiltersTextOutput(t *testing.T) {
+	dir := t.TempDir()
+	mustWrite(t, filepath.Join(dir, "changed.go"), "package sample\n\nfunc run() {\nif true {\nprintln(\"ok\")\n}\nprintln(\"next\")\n}\n")
+	mustWrite(t, filepath.Join(dir, "stale.go"), "package sample\n\nfunc stale() {\nif true {\nprintln(\"stale\")\n}\nprintln(\"keep\")\n}\n")
+	initGitRepo(t, dir)
+	runGit(t, dir, "add", ".")
+	runGit(t, dir, "commit", "-m", "initial")
+
+	mustWrite(t, filepath.Join(dir, "changed.go"), "package sample\n\nfunc run() {\nif true {\nprintln(\"ok\")\n}\nprintln(\"next\")\nprintln(\"tail\")\n}\n")
+
+	exitCode, stdout, stderr := runCLI(t, dir, "check", "--git-diff")
+
+	if exitCode != 1 {
+		t.Fatalf("expected exit code 1, got %d", exitCode)
+	}
+
+	if !strings.Contains(stdout, "Checked 1 file(s).") {
+		t.Fatalf("expected one diff-selected file, got:\n%s", stdout)
+	}
+
+	if !strings.Contains(stdout, "changed.go") || strings.Contains(stdout, "stale.go") {
+		t.Fatalf("expected only changed.go in output, got:\n%s", stdout)
+	}
+
+	if stderr != "" {
+		t.Fatalf("unexpected stderr:\n%s", stderr)
+	}
+}
+
+func TestRunJSONWithGitDiffFiltersResults(t *testing.T) {
+	dir := t.TempDir()
+	mustWrite(t, filepath.Join(dir, "changed.go"), "package sample\n\nfunc run() {\nif true {\nprintln(\"ok\")\n}\nprintln(\"next\")\n}\n")
+	mustWrite(t, filepath.Join(dir, "stale.go"), "package sample\n\nfunc stale() {\nif true {\nprintln(\"stale\")\n}\nprintln(\"keep\")\n}\n")
+	initGitRepo(t, dir)
+	runGit(t, dir, "add", ".")
+	runGit(t, dir, "commit", "-m", "initial")
+
+	mustWrite(t, filepath.Join(dir, "changed.go"), "package sample\n\nfunc run() {\nif true {\nprintln(\"ok\")\n}\nprintln(\"next\")\nprintln(\"tail\")\n}\n")
+
+	exitCode, stdout, stderr := runCLI(t, dir, "check", "--git-diff", "--format", "json")
+
+	if exitCode != 1 {
+		t.Fatalf("expected exit code 1, got %d", exitCode)
+	}
+
+	if !strings.Contains(stdout, "\"files\":1") {
+		t.Fatalf("expected one selected file in json output, got:\n%s", stdout)
+	}
+
+	if !strings.Contains(stdout, "changed.go") || strings.Contains(stdout, "stale.go") {
+		t.Fatalf("expected json output to reference only changed.go, got:\n%s", stdout)
+	}
+
+	if stderr != "" {
+		t.Fatalf("unexpected stderr:\n%s", stderr)
+	}
+}
+
+func TestRunAgentWithGitDiffFiltersResults(t *testing.T) {
+	dir := t.TempDir()
+	mustWrite(t, filepath.Join(dir, "changed.go"), "package sample\n\nfunc run() {\nif true {\nprintln(\"ok\")\n}\nprintln(\"next\")\n}\n")
+	mustWrite(t, filepath.Join(dir, "stale.go"), "package sample\n\nfunc stale() {\nif true {\nprintln(\"stale\")\n}\nprintln(\"keep\")\n}\n")
+	initGitRepo(t, dir)
+	runGit(t, dir, "add", ".")
+	runGit(t, dir, "commit", "-m", "initial")
+
+	mustWrite(t, filepath.Join(dir, "changed.go"), "package sample\n\nfunc run() {\nif true {\nprintln(\"ok\")\n}\nprintln(\"next\")\nprintln(\"tail\")\n}\n")
+
+	exitCode, stdout, stderr := runCLI(t, dir, "check", "--git-diff", "--format", "agent")
+
+	if exitCode != 1 {
+		t.Fatalf("expected exit code 1, got %d", exitCode)
+	}
+
+	if !strings.Contains(stdout, "\"files\": 1") {
+		t.Fatalf("expected one selected file in agent summary, got:\n%s", stdout)
+	}
+
+	if !strings.Contains(stdout, "changed.go") || strings.Contains(stdout, "stale.go") {
+		t.Fatalf("expected agent output to reference only changed.go, got:\n%s", stdout)
+	}
+
+	if stderr != "" {
+		t.Fatalf("unexpected stderr:\n%s", stderr)
 	}
 }
 
@@ -290,5 +378,25 @@ func mustWrite(t *testing.T, path string, content string) {
 
 	if err := os.WriteFile(path, []byte(content), 0o644); err != nil {
 		t.Fatalf("write file: %v", err)
+	}
+}
+
+func initGitRepo(t *testing.T, dir string) {
+	t.Helper()
+
+	runGit(t, dir, "init")
+	runGit(t, dir, "config", "user.email", "tests@example.com")
+	runGit(t, dir, "config", "user.name", "Tests")
+}
+
+func runGit(t *testing.T, dir string, args ...string) {
+	t.Helper()
+
+	cmd := exec.Command("git", args...)
+	cmd.Dir = dir
+	output, err := cmd.CombinedOutput()
+
+	if err != nil {
+		t.Fatalf("git %v: %v\n%s", args, err, output)
 	}
 }

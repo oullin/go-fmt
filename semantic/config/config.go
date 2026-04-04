@@ -5,7 +5,10 @@ type RuleToggle struct {
 }
 
 type Rules struct {
-	Spacing RuleToggle `mapstructure:"spacing"`
+	Spacing            RuleToggle `mapstructure:"spacing"`
+	DeclarationOrder   RuleToggle `mapstructure:"declaration_order"`
+	CallbackExtraction RuleToggle `mapstructure:"callback_extraction"`
+	TrimSpace          RuleToggle `mapstructure:"trimspace"`
 }
 
 type Formatters struct {
@@ -24,7 +27,10 @@ type Config struct {
 func Default() Config {
 	return Config{
 		Rules: Rules{
-			Spacing: RuleToggle{Enabled: true},
+			Spacing:            RuleToggle{Enabled: true},
+			DeclarationOrder:   RuleToggle{Enabled: true},
+			CallbackExtraction: RuleToggle{Enabled: true},
+			TrimSpace:          RuleToggle{Enabled: true},
 		},
 		Formatters: Formatters{
 			Gofmt:     true,

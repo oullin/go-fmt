@@ -25,23 +25,41 @@ func New(cfg config.Config, rr []rules.Rule, ff []formatter.Formatter) *Engine {
 }
 
 func (e *Engine) Check(paths []string) (Report, error) {
-	return e.run(paths, false)
-}
-
-func (e *Engine) Format(paths []string) (Report, error) {
-	return e.run(paths, true)
-}
-
-func (e *Engine) run(paths []string, write bool) (Report, error) {
 	files, err := CollectGoFiles(paths, e.cfg)
 
 	if err != nil {
 		return Report{}, err
 	}
 
+	return e.run(files, false)
+}
+
+func (e *Engine) Format(paths []string) (Report, error) {
+	files, err := CollectGoFiles(paths, e.cfg)
+
+	if err != nil {
+		return Report{}, err
+	}
+
+	return e.run(files, true)
+}
+
+func (e *Engine) CheckFiles(files []string) (Report, error) {
+	return e.run(files, false)
+}
+
+func (e *Engine) FormatFiles(files []string) (Report, error) {
+	return e.run(files, true)
+}
+
+func (e *Engine) run(files []string, write bool) (Report, error) {
 	report := Report{
 		Result: "pass",
 		Files:  len(files),
+	}
+
+	if len(files) == 0 {
+		return report, nil
 	}
 
 	for _, file := range files {

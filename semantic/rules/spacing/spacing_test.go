@@ -471,6 +471,270 @@ func run() {
 	}
 }
 
+func TestApplyFormatsBlankLineAfterShortAssignedFuncLiteral(t *testing.T) {
+	path := writeTempGoFile(t, `package sample
+
+func run() {
+	redirectFn := func() {
+		println("redirect")
+	}
+	locationFn := func() {
+		println("location")
+	}
+
+	_, _ = redirectFn, locationFn
+}
+`)
+
+	violations, formatted, err := New().Apply(path, mustReadFile(t, path))
+
+	if err != nil {
+		t.Fatalf("apply: %v", err)
+	}
+
+	if len(violations) != 1 {
+		t.Fatalf("expected 1 violation, got %d", len(violations))
+	}
+
+	if !strings.Contains(violations[0].Message, "after anonymous function assignment") {
+		t.Fatalf("unexpected message %q", violations[0].Message)
+	}
+
+	if !strings.Contains(string(formatted), "println(\"redirect\")\n\t}\n\n\tlocationFn := func()") {
+		t.Fatalf("expected blank line after short-assigned func literal, got:\n%s", formatted)
+	}
+}
+
+func TestApplyFormatsBlankLineAfterAssignedFuncLiteral(t *testing.T) {
+	path := writeTempGoFile(t, `package sample
+
+var redirectFn func()
+
+func run() {
+	redirectFn = func() {
+		println("redirect")
+	}
+	println("done")
+	_ = redirectFn
+}
+`)
+
+	violations, formatted, err := New().Apply(path, mustReadFile(t, path))
+
+	if err != nil {
+		t.Fatalf("apply: %v", err)
+	}
+
+	if len(violations) != 1 {
+		t.Fatalf("expected 1 violation, got %d", len(violations))
+	}
+
+	if !strings.Contains(string(formatted), "println(\"redirect\")\n\t}\n\n\tprintln(\"done\")") {
+		t.Fatalf("expected blank line after assigned func literal, got:\n%s", formatted)
+	}
+}
+
+func TestApplyFormatsBlankLineAfterVarAssignedFuncLiteral(t *testing.T) {
+	path := writeTempGoFile(t, `package sample
+
+func run() {
+	var redirectFn = func() {
+		println("redirect")
+	}
+	println("done")
+	_ = redirectFn
+}
+`)
+
+	violations, formatted, err := New().Apply(path, mustReadFile(t, path))
+
+	if err != nil {
+		t.Fatalf("apply: %v", err)
+	}
+
+	if len(violations) != 1 {
+		t.Fatalf("expected 1 violation, got %d", len(violations))
+	}
+
+	if !strings.Contains(string(formatted), "println(\"redirect\")\n\t}\n\n\tprintln(\"done\")") {
+		t.Fatalf("expected blank line after var-assigned func literal, got:\n%s", formatted)
+	}
+}
+
+func TestApplyDoesNotRequireLeadingBlankLineBeforeFuncLiteralAssignment(t *testing.T) {
+	path := writeTempGoFile(t, `package sample
+
+func run() {
+	println("start")
+	redirectFn := func() {
+		println("redirect")
+	}
+	println("done")
+	_ = redirectFn
+}
+`)
+
+	violations, formatted, err := New().Apply(path, mustReadFile(t, path))
+
+	if err != nil {
+		t.Fatalf("apply: %v", err)
+	}
+
+	if len(violations) != 1 {
+		t.Fatalf("expected 1 violation, got %d", len(violations))
+	}
+
+	if strings.Contains(string(formatted), "println(\"start\")\n\n\tredirectFn := func()") {
+		t.Fatalf("expected no blank line before func literal assignment, got:\n%s", formatted)
+	}
+
+	if !strings.Contains(string(formatted), "println(\"redirect\")\n\t}\n\n\tprintln(\"done\")") {
+		t.Fatalf("expected blank line after func literal assignment, got:\n%s", formatted)
+	}
+}
+
+func TestApplyKeepsExistingBlankLineAfterFuncLiteralAssignment(t *testing.T) {
+	path := writeTempGoFile(t, `package sample
+
+func run() {
+	redirectFn := func() {
+		println("redirect")
+	}
+
+	println("done")
+	_ = redirectFn
+}
+`)
+
+	original := string(mustReadFile(t, path))
+	violations, formatted, err := New().Apply(path, []byte(original))
+
+	if err != nil {
+		t.Fatalf("apply: %v", err)
+	}
+
+	if len(violations) != 0 {
+		t.Fatalf("expected 0 violations, got %d", len(violations))
+	}
+
+	if string(formatted) != original {
+		t.Fatalf("expected unchanged output, got:\n%s", formatted)
+	}
+}
+
+func TestApplyIgnoresSingleLineFuncLiteralStatementBoundaries(t *testing.T) {
+	path := writeTempGoFile(t, `package sample
+
+func run() bool {
+	return func() bool { value := true; return value }()
+}
+`)
+
+	original := string(mustReadFile(t, path))
+	violations, formatted, err := New().Apply(path, []byte(original))
+
+	if err != nil {
+		t.Fatalf("apply: %v", err)
+	}
+
+	if len(violations) != 0 {
+		t.Fatalf("expected 0 violations, got %d", len(violations))
+	}
+
+	if string(formatted) != original {
+		t.Fatalf("expected unchanged output, got:\n%s", formatted)
+	}
+}
+
+func TestApplyIgnoresSingleLineFuncLiteralInCompositeLiteral(t *testing.T) {
+	path := writeTempGoFile(t, `package sample
+
+type config struct {
+	SecureCookie bool
+}
+
+func run() config {
+	return config{
+		SecureCookie: func() bool { value := true; return value }(),
+	}
+}
+`)
+
+	original := string(mustReadFile(t, path))
+	violations, formatted, err := New().Apply(path, []byte(original))
+
+	if err != nil {
+		t.Fatalf("apply: %v", err)
+	}
+
+	if len(violations) != 0 {
+		t.Fatalf("expected 0 violations, got %d", len(violations))
+	}
+
+	if string(formatted) != original {
+		t.Fatalf("expected unchanged output, got:\n%s", formatted)
+	}
+}
+
+func TestApplyIgnoresNonFuncLiteralAssignments(t *testing.T) {
+	path := writeTempGoFile(t, `package sample
+
+func run() {
+	redirectFn := otherRedirect
+	println("done")
+	_ = redirectFn
+}
+
+func otherRedirect() {}
+`)
+
+	original := string(mustReadFile(t, path))
+	violations, formatted, err := New().Apply(path, []byte(original))
+
+	if err != nil {
+		t.Fatalf("apply: %v", err)
+	}
+
+	if len(violations) != 0 {
+		t.Fatalf("expected 0 violations, got %d", len(violations))
+	}
+
+	if string(formatted) != original {
+		t.Fatalf("expected unchanged output, got:\n%s", formatted)
+	}
+}
+
+func TestApplyIgnoresNestedFuncLiteralUsages(t *testing.T) {
+	path := writeTempGoFile(t, `package sample
+
+func run() {
+	_ = wrap(func() {
+		println("nested")
+	})
+	println("done")
+}
+
+func wrap(fn func()) func() {
+	return fn
+}
+`)
+
+	original := string(mustReadFile(t, path))
+	violations, formatted, err := New().Apply(path, []byte(original))
+
+	if err != nil {
+		t.Fatalf("apply: %v", err)
+	}
+
+	if len(violations) != 0 {
+		t.Fatalf("expected 0 violations, got %d", len(violations))
+	}
+
+	if string(formatted) != original {
+		t.Fatalf("expected unchanged output, got:\n%s", formatted)
+	}
+}
+
 func TestApplyIgnoresNonStandaloneSortUsage(t *testing.T) {
 	path := writeTempGoFile(t, `package sample
 

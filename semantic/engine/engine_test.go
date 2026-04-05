@@ -10,7 +10,6 @@ import (
 	"github.com/oullin/go-fmt/semantic/engine"
 	"github.com/oullin/go-fmt/semantic/formatter"
 	"github.com/oullin/go-fmt/semantic/rules"
-	"github.com/oullin/go-fmt/semantic/rules/declaration_order"
 	"github.com/oullin/go-fmt/semantic/rules/spacing"
 )
 
@@ -24,7 +23,6 @@ func defaultFormatters() []formatter.Formatter {
 
 func TestCollectGoFilesSkipsHiddenVendorAndGenerated(t *testing.T) {
 	root := t.TempDir()
-
 	mustWrite(t, filepath.Join(root, "root.go"), "package sample\n")
 	mustWrite(t, filepath.Join(root, "pkg", "nested.go"), "package sample\n")
 	mustWrite(t, filepath.Join(root, "vendor", "skip.go"), "package sample\n")
@@ -45,7 +43,6 @@ func TestCollectGoFilesSkipsHiddenVendorAndGenerated(t *testing.T) {
 func TestCheckReportsStyleChangesWithoutWriting(t *testing.T) {
 	root := t.TempDir()
 	path := filepath.Join(root, "sample.go")
-
 	mustWrite(t, path, `package sample
 
 func run() {
@@ -84,7 +81,6 @@ func run() {
 func TestFormatWritesSpacingChanges(t *testing.T) {
 	root := t.TempDir()
 	path := filepath.Join(root, "sample.go")
-
 	mustWrite(t, path, `package sample
 
 func run() {
@@ -114,43 +110,38 @@ func run() {
 	}
 }
 
-func TestFormatRepairsDetachedGoEmbedDirective(t *testing.T) {
+func TestFormatSkipsSingleLineFuncLiteralSpacingViolations(t *testing.T) {
 	root := t.TempDir()
 	path := filepath.Join(root, "sample.go")
-
 	mustWrite(t, path, `package sample
 
-import "embed"
+type config struct {
+	SecureCookie bool
+}
 
-//go:embed foo.txt
-
-type runtime struct{}
-
-var rootTemplateFS embed.FS
+func run() config {
+	return config{
+		SecureCookie: func() bool { value := true; return value }(),
+	}
+}
 `)
 
-	report, err := engine.New(
-		config.Default(),
-		[]rules.Rule{declaration_order.New()},
-		defaultFormatters(),
-	).Format([]string{root})
+	report, err := engine.New(config.Default(), defaultRules(), defaultFormatters()).Format([]string{root})
 
 	if err != nil {
 		t.Fatalf("format: %v", err)
 	}
 
-	if report.Result != "fixed" {
-		t.Fatalf("expected fixed result, got %q", report.Result)
+	if report.Result != "pass" {
+		t.Fatalf("expected pass result, got %q", report.Result)
 	}
 
-	content, err := os.ReadFile(path)
-
-	if err != nil {
-		t.Fatalf("read file: %v", err)
+	if report.Changed != 0 {
+		t.Fatalf("expected 0 changed files, got %d", report.Changed)
 	}
 
-	if !strings.Contains(string(content), "//go:embed foo.txt\nvar rootTemplateFS embed.FS\n\ntype runtime struct{}") {
-		t.Fatalf("expected go:embed directive to remain attached to the var, got:\n%s", content)
+	if report.ViolationCount() != 0 {
+		t.Fatalf("expected 0 violations, got %d", report.ViolationCount())
 	}
 }
 

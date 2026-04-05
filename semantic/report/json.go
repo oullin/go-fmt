@@ -40,6 +40,13 @@ func toJSONReport(cwd string, report engine.Report) jsonReport {
 		Changed: report.Changed,
 	}
 
+	for _, result := range report.Errors {
+		out.Errors = append(out.Errors, jsonErrorMessage{
+			File:    relativePath(cwd, result.File),
+			Message: result.Message,
+		})
+	}
+
 	for _, result := range report.Results {
 		rel := relativePath(cwd, result.File)
 

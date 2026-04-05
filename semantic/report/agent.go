@@ -52,6 +52,13 @@ func toAgentReport(cwd string, report engine.Report) agentReport {
 		},
 	}
 
+	for _, result := range report.Errors {
+		out.Errors = append(out.Errors, jsonErrorMessage{
+			File:    relativePath(cwd, result.File),
+			Message: result.Message,
+		})
+	}
+
 	for _, result := range report.Results {
 		rel := relativePath(cwd, result.File)
 

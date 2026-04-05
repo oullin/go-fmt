@@ -10,7 +10,7 @@ import (
 )
 
 func RenderText(w io.Writer, cwd, mode string, report engine.Report) error {
-	if report.Files == 0 {
+	if report.Files == 0 && len(report.Errors) == 0 {
 		if _, err := color.New(color.FgYellow).Fprintf(w, "\n  No Go files found.\n\n"); err != nil {
 			return err
 		}
@@ -18,14 +18,20 @@ func RenderText(w io.Writer, cwd, mode string, report engine.Report) error {
 		return nil
 	}
 
-	action := "Checked"
+	if report.Files == 0 {
+		if _, err := color.New(color.FgYellow).Fprintf(w, "\n  No Go files found.\n\n"); err != nil {
+			return err
+		}
+	} else {
+		action := "Checked"
 
-	if mode == "format" {
-		action = "Formatted"
-	}
+		if mode == "format" {
+			action = "Formatted"
+		}
 
-	if _, err := color.New(color.FgGreen, color.Bold).Fprintf(w, "\n  %s %d file(s).\n\n", action, report.Files); err != nil {
-		return err
+		if _, err := color.New(color.FgGreen, color.Bold).Fprintf(w, "\n  %s %d file(s).\n\n", action, report.Files); err != nil {
+			return err
+		}
 	}
 
 	for _, result := range report.Results {
@@ -76,6 +82,24 @@ func RenderText(w io.Writer, cwd, mode string, report engine.Report) error {
 		}
 
 		fmt.Fprintln(w)
+	}
+
+	for _, result := range report.Errors {
+		rel := relativePath(cwd, result.File)
+
+		if rel != "" && rel != "." {
+			if _, err := color.New(color.FgCyan, color.Bold).Fprintf(w, "  %s\n", rel); err != nil {
+				return err
+			}
+		} else {
+			if _, err := color.New(color.FgCyan, color.Bold).Fprintf(w, "  workspace\n"); err != nil {
+				return err
+			}
+		}
+
+		if _, err := color.New(color.FgRed).Fprintf(w, "    ! %s\n\n", result.Message); err != nil {
+			return err
+		}
 	}
 
 	summaryColor := color.New(color.Bold)

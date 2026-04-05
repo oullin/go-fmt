@@ -115,6 +115,10 @@ if [[ ${#semantic_args[@]} -gt 0 ]]; then
 	fi
 fi
 
+if [[ "$use_diff_selection" == true ]] && ! go -C "$GO_WORKDIR" run "$CMD" check --cwd . . >/dev/null 2>&1; then
+	go -C "$GO_WORKDIR" run "$CMD" format --cwd . .
+fi
+
 if [[ ${#selected_args[@]} -gt 0 ]]; then
 	printf '%s\0' "${selected_args[@]}" | xargs -0 "$oxfmt_bin" --write --no-error-on-unmatched-pattern
 fi

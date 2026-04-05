@@ -123,6 +123,7 @@ func run() {
 	run_format "$fixture_root" .
 
 	assert_contains "$fixture_root/go-invocations.log" 'format --cwd . --git-diff'
+	assert_not_contains "$fixture_root/go-invocations.log" 'format --cwd . .'
 	assert_contains "$fixture_root/semantic/pkg/api/changed.go" 'defer println("done")
 
 	return'
@@ -164,6 +165,7 @@ func create() {
 
 	assert_not_contains "$fixture_root/go-invocations.log" '--git-diff'
 	assert_contains "$fixture_root/go-invocations.log" 'format --cwd .'
+	assert_not_contains "$fixture_root/go-invocations.log" 'format --cwd . .'
 	assert_contains "$fixture_root/go-invocations.log" 'pkg/api/changed.go'
 	assert_contains "$fixture_root/go-invocations.log" 'pkg/api/new.go'
 	assert_contains "$fixture_root/semantic/pkg/api/changed.go" 'defer println("done")
@@ -203,6 +205,7 @@ func run() {
 	run_format "$fixture_root" .
 
 	assert_contains "$fixture_root/go-invocations.log" 'format --cwd . --git-diff'
+	assert_not_contains "$fixture_root/go-invocations.log" 'format --cwd . .'
 	assert_contains "$fixture_root/semantic/pkg/api/changed.go" 'defer println("done")
 
 	return'
@@ -236,13 +239,59 @@ func run() {
 	run_format "$fixture_root" semantic/pkg/api/changed.go
 
 	assert_not_contains "$fixture_root/go-invocations.log" '--git-diff'
+	assert_not_contains "$fixture_root/go-invocations.log" 'format --cwd . .'
 	assert_contains "$fixture_root/go-invocations.log" 'format --cwd . pkg/api/changed.go'
 	assert_contains "$fixture_root/semantic/pkg/api/changed.go" 'defer println("done")
 
 	return'
 }
 
+test_repo_root_falls_back_to_full_semantic_workspace() {
+	local fixture_root
+	fixture_root="$(create_fixture full-workspace-fallback)"
+
+	write_file "$fixture_root/semantic/pkg/api/ordered.go" 'package sample
+
+type Name string
+
+const DefaultName Name = "demo"
+'
+	write_file "$fixture_root/semantic/pkg/api/changed.go" 'package sample
+
+func run() {
+	println("ok")
+}
+'
+
+	(
+		cd "$fixture_root"
+		git add semantic/pkg/api/ordered.go semantic/pkg/api/changed.go
+		git commit -q -m 'add tracked go files'
+	)
+
+	write_file "$fixture_root/semantic/pkg/api/changed.go" 'package sample
+
+func run() {
+	defer println("done")
+	return
+}
+'
+
+	run_format "$fixture_root" .
+
+	assert_contains "$fixture_root/go-invocations.log" 'format --cwd . --git-diff'
+	assert_contains "$fixture_root/go-invocations.log" 'check --cwd . .'
+	assert_contains "$fixture_root/go-invocations.log" 'format --cwd . .'
+	assert_contains "$fixture_root/semantic/pkg/api/changed.go" 'defer println("done")
+
+	return'
+	assert_contains "$fixture_root/semantic/pkg/api/ordered.go" 'const DefaultName Name = "demo"
+
+type Name string'
+}
+
 test_tracked_go_uses_git_diff
 test_untracked_go_disables_git_diff_and_formats_both
 test_untracked_non_go_keeps_git_diff
 test_explicit_path_uses_explicit_args
+test_repo_root_falls_back_to_full_semantic_workspace

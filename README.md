@@ -159,7 +159,7 @@ go-fmt check --git-diff
 go-fmt check --host-path "$PWD/pkg/api" --host-path "$PWD/internal/app"
 ```
 
-The stand-alone CLI formats Go source only. Repository-local `make format` also runs Oxc formatting for supported non-Go files through the `tooling` workspace.
+The stand-alone CLI formats Go source only. Repository-local `make format` also runs Oxc formatting for supported non-Go files through the `tooling` workspace. With the default `ARGS=.`, it starts with changed tracked and untracked files, then widens Go formatting to the full `semantic` workspace if untouched files would still fail the semantic check. Oxc remains scoped to the selected files.
 
 ## Docker
 
@@ -610,13 +610,13 @@ make clean
 
 ### Make variables
 
-| Variable            | Default                                             | Description                                                                                   |
-| ------------------- | --------------------------------------------------- | --------------------------------------------------------------------------------------------- |
-| `ARGS`              | `.`                                                 | With `.`, format changed tracked and untracked files; set a path to target a specific subtree |
-| `VERSION`           | `git describe ...` or `dev`                         | Build version injected into binaries                                                          |
-| `CGO_ENABLED`       | `0`                                                 | CGO setting for build and release                                                             |
-| `DIST_DIR`          | `dist`                                              | Output directory for release binaries                                                         |
-| `RELEASE_PLATFORMS` | `darwin/amd64 darwin/arm64 linux/amd64 linux/arm64` | Platforms built by `make release`                                                             |
+| Variable            | Default                                             | Description                                                                                                                               |
+| ------------------- | --------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------- |
+| `ARGS`              | `.`                                                 | With `.`, format changed tracked/untracked files first, then widen semantic formatting if needed; set a path to target a specific subtree |
+| `VERSION`           | `git describe ...` or `dev`                         | Build version injected into binaries                                                                                                      |
+| `CGO_ENABLED`       | `0`                                                 | CGO setting for build and release                                                                                                         |
+| `DIST_DIR`          | `dist`                                              | Output directory for release binaries                                                                                                     |
+| `RELEASE_PLATFORMS` | `darwin/amd64 darwin/arm64 linux/amd64 linux/arm64` | Platforms built by `make release`                                                                                                         |
 
 ### Examples
 

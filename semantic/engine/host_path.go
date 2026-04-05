@@ -7,11 +7,11 @@ import (
 	"strings"
 )
 
+const HostRootEnv = "HOST_PROJECT_PATH"
+
 type HostPath string
 
 type HostPaths []HostPath
-
-const HostRootEnv = "HOST_PROJECT_PATH"
 
 func (h HostPath) Resolve(workRoot string, positional []string) ([]string, error) {
 	return HostPaths{h}.Resolve(workRoot, positional)

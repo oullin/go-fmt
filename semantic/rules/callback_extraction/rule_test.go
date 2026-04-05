@@ -74,6 +74,94 @@ func run() {
 	}
 }
 
+func TestApplySkipsDirectLabeledStatements(t *testing.T) {
+	path := writeTempGoFile(t, `package sample
+
+type handler struct {
+	Redirect func(string)
+}
+
+func consume(handler) {}
+
+func run() {
+	goto L
+L:
+	consume(handler{
+		Redirect: func(url string) {
+			println(url)
+		},
+	})
+}
+`)
+
+	violations, formatted, err := New().Apply(path, mustReadFile(t, path))
+
+	if err != nil {
+		t.Fatalf("apply: %v", err)
+	}
+
+	if len(violations) != 0 {
+		t.Fatalf("expected 0 violations for direct labeled statement, got %d", len(violations))
+	}
+
+	output := string(formatted)
+
+	if strings.Contains(output, "redirectFn := func(url string)") {
+		t.Fatalf("expected labeled statement to keep inline callback, got:\n%s", formatted)
+	}
+
+	if !strings.Contains(output, "L:\n\tconsume(handler{") {
+		t.Fatalf("expected callback to stay in labeled statement, got:\n%s", formatted)
+	}
+
+	if !strings.Contains(output, "Redirect: func(url string)") {
+		t.Fatalf("expected inline callback to remain under label, got:\n%s", formatted)
+	}
+}
+
+func TestApplyExtractsInsideNestedLabeledBodies(t *testing.T) {
+	path := writeTempGoFile(t, `package sample
+
+type handler struct {
+	Redirect func(string)
+}
+
+func run() {
+L:
+	for {
+		h := handler{
+			Redirect: func(url string) {
+				println(url)
+			},
+		}
+
+		_ = h
+		break L
+	}
+}
+`)
+
+	violations, formatted, err := New().Apply(path, mustReadFile(t, path))
+
+	if err != nil {
+		t.Fatalf("apply: %v", err)
+	}
+
+	if len(violations) != 1 {
+		t.Fatalf("expected 1 violation in nested labeled body, got %d", len(violations))
+	}
+
+	output := string(formatted)
+
+	if !strings.Contains(output, "L:\n\tfor {\n\t\tredirectFn := func(url string)") {
+		t.Fatalf("expected extraction inside labeled loop body, got:\n%s", formatted)
+	}
+
+	if !strings.Contains(output, "Redirect: redirectFn") {
+		t.Fatalf("expected extracted callback reference in labeled loop body, got:\n%s", formatted)
+	}
+}
+
 func TestLowerFirst(t *testing.T) {
 	tests := []struct {
 		name  string

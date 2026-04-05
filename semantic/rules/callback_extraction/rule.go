@@ -105,6 +105,10 @@ func processBlock(block *ast.BlockStmt, registry *nameRegistry, fset *token.File
 }
 
 func extractCallbacks(stmt ast.Stmt, registry *nameRegistry, fset *token.FileSet, filename string, violations *[]rules.Violation) ([]ast.Stmt, bool) {
+	if _, ok := stmt.(*ast.LabeledStmt); ok {
+		return nil, false
+	}
+
 	var decls []ast.Stmt
 
 	changed := false
@@ -113,7 +117,7 @@ func extractCallbacks(stmt ast.Stmt, registry *nameRegistry, fset *token.FileSet
 		node := cursor.Node()
 
 		switch typed := node.(type) {
-		case *ast.BlockStmt, *ast.CaseClause, *ast.CommClause:
+		case *ast.BlockStmt, *ast.CaseClause, *ast.CommClause, *ast.LabeledStmt:
 			return node == stmt
 		case *ast.FuncLit:
 			return false

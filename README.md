@@ -454,12 +454,12 @@ If a `//go:embed` directive is separated from its `var` by a misplaced top-level
 
 ### `callback_extraction`
 
-Inline func literals used as composite literal field values are extracted into local variables immediately above the containing statement.
+Inline func literals used as composite literal field values are extracted into local variables immediately above the containing statement. Direct labeled statements are skipped so extraction does not insert declarations between a `goto` and its label target.
 
 ### `trimspace`
 
 Empty-string comparisons are rewritten to use `strings.TrimSpace(...)`, including `== ""`, `!= ""`, reversed literal comparisons, and control-flow init conditions.
-When a `strings` import already exists, the rule preserves its style: aliased imports reuse the alias, dot imports emit `TrimSpace(...)`, and blank imports are left unchanged.
+When a `strings` import already exists, the rule preserves its style: aliased imports reuse the alias, dot imports emit `TrimSpace(...)`, and blank imports are left unchanged. Default-import rewrites are skipped when `strings` is shadowed in scope so the formatter does not introduce uncompilable selectors.
 
 ## File Discovery
 

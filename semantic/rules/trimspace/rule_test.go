@@ -59,6 +59,124 @@ func run(value string) bool {
 	}
 }
 
+func TestApplySkipsShadowedDefaultImport(t *testing.T) {
+	source := `package sample
+
+import "strings"
+
+func run(strings string) bool {
+	return strings != ""
+}
+`
+	path := writeTempGoFile(t, source)
+
+	violations, formatted, err := New().Apply(path, mustReadFile(t, path))
+
+	if err != nil {
+		t.Fatalf("apply: %v", err)
+	}
+
+	if len(violations) != 0 {
+		t.Fatalf("expected no violations, got %d", len(violations))
+	}
+
+	if string(formatted) != source {
+		t.Fatalf("expected source to be unchanged, got:\n%s", formatted)
+	}
+}
+
+func TestApplySkipsShadowedMissingImport(t *testing.T) {
+	source := `package sample
+
+func run(strings string) bool {
+	return strings != ""
+}
+`
+	path := writeTempGoFile(t, source)
+
+	violations, formatted, err := New().Apply(path, mustReadFile(t, path))
+
+	if err != nil {
+		t.Fatalf("apply: %v", err)
+	}
+
+	if len(violations) != 0 {
+		t.Fatalf("expected no violations, got %d", len(violations))
+	}
+
+	if strings.Contains(string(formatted), "import \"strings\"") {
+		t.Fatalf("expected no strings import, got:\n%s", formatted)
+	}
+
+	if string(formatted) != source {
+		t.Fatalf("expected source to be unchanged, got:\n%s", formatted)
+	}
+}
+
+func TestApplyRewritesSafeSitesAndSkipsShadowedSites(t *testing.T) {
+	path := writeTempGoFile(t, `package sample
+
+func run(value string) bool {
+	if value != "" {
+		return true
+	}
+
+	return func(strings string) bool {
+		return strings != ""
+	}(value)
+}
+`)
+
+	violations, formatted, err := New().Apply(path, mustReadFile(t, path))
+
+	if err != nil {
+		t.Fatalf("apply: %v", err)
+	}
+
+	if len(violations) != 1 {
+		t.Fatalf("expected 1 violation, got %d", len(violations))
+	}
+
+	if !strings.Contains(string(formatted), "import \"strings\"") {
+		t.Fatalf("expected strings import, got:\n%s", formatted)
+	}
+
+	if !strings.Contains(string(formatted), "if strings.TrimSpace(value) != \"\"") {
+		t.Fatalf("expected safe site rewrite, got:\n%s", formatted)
+	}
+
+	if !strings.Contains(string(formatted), "return strings != \"\"") {
+		t.Fatalf("expected shadowed site to remain unchanged, got:\n%s", formatted)
+	}
+}
+
+func TestApplyReusesAliasWhenStringsIsShadowedLocally(t *testing.T) {
+	path := writeTempGoFile(t, `package sample
+
+import stdstrings "strings"
+
+func run(value string) bool {
+	return func(strings string) bool {
+		return strings != "" || value != ""
+	}(value)
+}
+`)
+
+	violations, formatted, err := New().Apply(path, mustReadFile(t, path))
+
+	if err != nil {
+		t.Fatalf("apply: %v", err)
+	}
+
+	if len(violations) != 2 {
+		t.Fatalf("expected 2 violations, got %d", len(violations))
+	}
+
+	if !strings.Contains(string(formatted), "return stdstrings.TrimSpace(strings) != \"\" || stdstrings.TrimSpace(value) != \"\"") {
+		t.Fatalf("expected alias-based rewrite, got:\n%s", formatted)
+	}
+}
+
 func TestApplyPreservesDotImport(t *testing.T) {
 	path := writeTempGoFile(t, `package sample
 

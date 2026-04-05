@@ -5,7 +5,7 @@
 		"build": "pnpm --filter semantic run build",
 		"format": "make format",
 		"format:tooling": "turbo run format --filter=tooling",
-		"test": "pnpm --filter semantic run test",
+		"test": "pnpm --filter semantic run test && ./scripts/test-format.sh",
 		"vet": "pnpm --filter semantic run vet"
 	},
 	"devDependencies": {

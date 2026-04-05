@@ -72,6 +72,7 @@ is_repo_root_selector() {
 }
 
 use_diff_selection=true
+has_untracked_semantic_go_args=false
 
 for raw_arg in "${args[@]}"; do
 	arg="$(normalize_arg "$raw_arg")"
@@ -84,10 +85,15 @@ done
 if [[ "$use_diff_selection" == true ]] && git -C "$repo_root" rev-parse --is-inside-work-tree >/dev/null 2>&1; then
 	while IFS= read -r -d '' path; do
 		selected_args+=("$path")
-	done < <(
-		git -C "$repo_root" diff --name-only --diff-filter=ACMR -z HEAD --
-		git -C "$repo_root" ls-files --others --exclude-standard -z
-	)
+	done < <(git -C "$repo_root" diff --name-only --diff-filter=ACMR -z HEAD --)
+
+	while IFS= read -r -d '' path; do
+		selected_args+=("$path")
+		arg="$(normalize_arg "$path")"
+		if semantic_arg="$(to_semantic_arg "$arg")" && [[ "$semantic_arg" == *.go ]]; then
+			has_untracked_semantic_go_args=true
+		fi
+	done < <(git -C "$repo_root" ls-files --others --exclude-standard -z)
 else
 	while IFS= read -r -d '' path; do
 		selected_args+=("$path")
@@ -102,7 +108,7 @@ for raw_arg in "${selected_args[@]}"; do
 done
 
 if [[ ${#semantic_args[@]} -gt 0 ]]; then
-	if [[ "$use_diff_selection" == true ]]; then
+	if [[ "$use_diff_selection" == true && "$has_untracked_semantic_go_args" == false ]]; then
 		go -C "$GO_WORKDIR" run "$CMD" format --cwd . --git-diff
 	else
 		go -C "$GO_WORKDIR" run "$CMD" format --cwd . "${semantic_args[@]}"

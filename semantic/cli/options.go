@@ -7,6 +7,7 @@ type Options struct {
 	ConfigPath   string
 	ReportRoot   string
 	OutputFormat string
-	HostPath     engine.HostPath
+	GitDiff      bool
+	HostPaths    engine.HostPaths
 	Positional   []string
 }

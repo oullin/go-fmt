@@ -6,4 +6,10 @@ services:
             - .:/work
         environment:
             HOST_PROJECT_PATH: ${PWD}
-        command: ['help']
+        # --host-path is repeatable; each path must stay under HOST_PROJECT_PATH.
+        command:
+            - format
+            - --host-path
+            - ${PWD}/pkg/api
+            - --host-path
+            - ${PWD}/internal/app

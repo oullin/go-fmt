@@ -19,6 +19,18 @@ func TestLoadDefaultsWhenConfigDoesNotExist(t *testing.T) {
 		t.Fatalf("expected spacing rule enabled by default")
 	}
 
+	if !cfg.Rules.DeclarationOrder.Enabled {
+		t.Fatalf("expected declaration_order rule enabled by default")
+	}
+
+	if !cfg.Rules.CallbackExtraction.Enabled {
+		t.Fatalf("expected callback_extraction rule enabled by default")
+	}
+
+	if !cfg.Rules.TrimSpace.Enabled {
+		t.Fatalf("expected trimspace rule enabled by default")
+	}
+
 	if !cfg.Formatters.Gofmt || !cfg.Formatters.Goimports {
 		t.Fatalf("expected gofmt and goimports enabled by default")
 	}
@@ -27,7 +39,7 @@ func TestLoadDefaultsWhenConfigDoesNotExist(t *testing.T) {
 func TestLoadYAMLOverridesDefaults(t *testing.T) {
 	dir := t.TempDir()
 	configPath := filepath.Join(dir, DefaultFileName)
-	content := []byte("rules:\n  spacing:\n    enabled: false\nformatters:\n  gofmt: true\n  goimports: false\nexclude:\n  - build\nnot_path:\n  - generated\nnot_name:\n  - '*.pb.go'\n")
+	content := []byte("rules:\n  spacing:\n    enabled: false\n  declaration_order:\n    enabled: false\n  callback_extraction:\n    enabled: false\n  trimspace:\n    enabled: false\nformatters:\n  gofmt: true\n  goimports: false\nexclude:\n  - build\nnot_path:\n  - generated\nnot_name:\n  - '*.pb.go'\n")
 
 	if err := os.WriteFile(configPath, content, 0o644); err != nil {
 		t.Fatalf("write config: %v", err)
@@ -41,6 +53,18 @@ func TestLoadYAMLOverridesDefaults(t *testing.T) {
 
 	if cfg.Rules.Spacing.Enabled {
 		t.Fatalf("expected spacing rule disabled")
+	}
+
+	if cfg.Rules.DeclarationOrder.Enabled {
+		t.Fatalf("expected declaration_order rule disabled")
+	}
+
+	if cfg.Rules.CallbackExtraction.Enabled {
+		t.Fatalf("expected callback_extraction rule disabled")
+	}
+
+	if cfg.Rules.TrimSpace.Enabled {
+		t.Fatalf("expected trimspace rule disabled")
 	}
 
 	if cfg.Formatters.Goimports {

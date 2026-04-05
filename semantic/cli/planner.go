@@ -3,13 +3,17 @@ package cli
 import (
 	"fmt"
 	"os"
+	"path/filepath"
 	"strings"
 
 	"github.com/oullin/go-fmt/semantic/config"
 	"github.com/oullin/go-fmt/semantic/engine"
 	"github.com/oullin/go-fmt/semantic/formatter"
 	"github.com/oullin/go-fmt/semantic/rules"
+	"github.com/oullin/go-fmt/semantic/rules/callback_extraction"
+	"github.com/oullin/go-fmt/semantic/rules/declaration_order"
 	"github.com/oullin/go-fmt/semantic/rules/spacing"
+	"github.com/oullin/go-fmt/semantic/rules/trimspace"
 )
 
 type Environment struct{}
@@ -28,7 +32,7 @@ type Plan struct {
 	Mode         Mode
 	OutputFormat string
 	ReportRoot   string
-	RunPaths     []string
+	Files        []string
 	Engine       *engine.Engine
 }
 
@@ -36,8 +40,24 @@ func (Environment) WorkingDirectory() (string, error) {
 	return os.Getwd()
 }
 
+func (Environment) GitDiffFiles(root string) ([]string, error) {
+	return engine.GitDiffGoFiles(root)
+}
+
 func (RuleSet) Build(cfg config.Config) []rules.Rule {
 	var out []rules.Rule
+
+	if cfg.Rules.DeclarationOrder.Enabled {
+		out = append(out, declaration_order.New())
+	}
+
+	if cfg.Rules.CallbackExtraction.Enabled {
+		out = append(out, callback_extraction.New())
+	}
+
+	if cfg.Rules.TrimSpace.Enabled {
+		out = append(out, trimspace.New())
+	}
 
 	if cfg.Rules.Spacing.Enabled {
 		out = append(out, spacing.New())
@@ -73,23 +93,45 @@ func (p Planner) Build(options Options) (Plan, error) {
 		reportRoot = options.ReportRoot
 	}
 
+	reportRoot, err = filepath.Abs(reportRoot)
+
+	if err != nil {
+		return Plan{}, fmt.Errorf("resolve report root: %w", err)
+	}
+
 	cfg, err := config.Load(reportRoot, options.ConfigPath)
 
 	if err != nil {
 		return Plan{}, err
 	}
 
-	runPaths, err := options.HostPath.Resolve(workRoot, options.Positional)
+	runPaths, err := options.HostPaths.Resolve(workRoot, options.Positional)
 
 	if err != nil {
 		return Plan{}, err
+	}
+
+	files, err := engine.CollectGoFiles(runPaths, cfg)
+
+	if err != nil {
+		return Plan{}, err
+	}
+
+	if options.GitDiff {
+		diffFiles, err := p.Environment.GitDiffFiles(reportRoot)
+
+		if err != nil {
+			return Plan{}, err
+		}
+
+		files = engine.FilterFiles(files, diffFiles)
 	}
 
 	return Plan{
 		Mode:         options.Mode,
 		OutputFormat: options.OutputFormat,
 		ReportRoot:   reportRoot,
-		RunPaths:     runPaths,
+		Files:        files,
 		Engine:       engine.New(cfg, p.RuleSet.Build(cfg), p.FormatterSet.Build(cfg)),
 	}, nil
 }
@@ -97,9 +139,9 @@ func (p Planner) Build(options Options) (Plan, error) {
 func (p Plan) Execute() (engine.Report, error) {
 	switch p.Mode {
 	case CheckMode:
-		return p.Engine.Check(p.RunPaths)
+		return p.Engine.CheckFiles(p.Files)
 	case FormatMode:
-		return p.Engine.Format(p.RunPaths)
+		return p.Engine.FormatFiles(p.Files)
 	default:
 		return engine.Report{}, fmt.Errorf("unsupported mode %q", p.Mode)
 	}

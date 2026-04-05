@@ -11,7 +11,7 @@
 
 `go-fmt` fixes layout and structure that `gofmt` does not touch, then finishes with `gofmt` and `goimports`. The result is a single command that can check or rewrite Go code with consistent semantic spacing, predictable output, and a clean path for local use, CI, or container-based workflows.
 
-**Quick links:** [Quick Start](#quick-start) · [Installation](#installation) · [CLI](#cli) · [Docker](#docker) · [Configuration](#configuration) · [Spacing Rule](#spacing-rule) · [Development](#development)
+**Quick links:** [Quick Start](#quick-start) · [Installation](#installation) · [CLI](#cli) · [Docker](#docker) · [Configuration](#configuration) · [Semantic Rules](#semantic-rules) · [Development](#development)
 
 ## Why go-fmt
 
@@ -30,11 +30,22 @@ Use the maintained consumer Compose file from [`examples/consumer/go-fmt.compose
 ```bash
 curl -o go-fmt.compose.yaml https://raw.githubusercontent.com/oullin/go-fmt/main/examples/consumer/go-fmt.compose.yaml
 
-docker compose -f go-fmt.compose.yaml run --rm go-fmt check .
-docker compose -f go-fmt.compose.yaml run --rm go-fmt format .
+docker compose -f go-fmt.compose.yaml run --rm go-fmt
+docker compose -f go-fmt.compose.yaml run --rm go-fmt check --host-path "$PWD/pkg/api" --host-path "$PWD/internal/app"
 ```
 
 This is the recommended integration path. It keeps the command short, the container configuration reusable, and the toolchain identical across machines and CI.
+
+Inside a downstream app repository, the flow looks like this:
+
+```text
+your-app/
+├── go-fmt.compose.yaml
+├── internal/app/
+└── pkg/api/
+```
+
+The first command uses the service's default `command:` from `go-fmt.compose.yaml`, which formats the configured mounted paths. The second command overrides that default to run `check`, so it repeats the same `--host-path` arguments explicitly.
 
 ### Local install
 
@@ -112,12 +123,13 @@ If no paths are provided, both commands default to the current directory (`.`).
 
 Both commands accept the same flags:
 
-| Flag          | Description                                                                          | Default                           |
-| ------------- | ------------------------------------------------------------------------------------ | --------------------------------- |
-| `--config`    | Path to a `config.yml` file                                                          | Auto-detected in the working tree |
-| `--cwd`       | Base path used for config discovery and relative output paths                        | Current working directory         |
-| `--format`    | Output format: `text`, `json`, or `agent`                                            | `text`                            |
-| `--host-path` | Absolute host path under `HOST_PROJECT_PATH`; intended for the Compose consumer flow | Disabled unless env is set        |
+| Flag          | Description                                                                                      | Default                           |
+| ------------- | ------------------------------------------------------------------------------------------------ | --------------------------------- |
+| `--config`    | Path to a `config.yml` file                                                                      | Auto-detected in the working tree |
+| `--cwd`       | Base path used for config discovery and relative output paths                                    | Current working directory         |
+| `--format`    | Output format: `text`, `json`, or `agent`                                                        | `text`                            |
+| `--git-diff`  | Limit the run to tracked Go files changed versus `HEAD`                                          | Disabled                          |
+| `--host-path` | Absolute host path under `HOST_PROJECT_PATH`; intended for the Compose consumer flow; repeatable | Disabled unless env is set        |
 
 ### Common workflows
 
@@ -135,13 +147,19 @@ go-fmt check --format json .
 go-fmt check --format agent .
 
 # check a single file
-go-fmt check ./semantic/rules/spacing/spacing.go
+go-fmt check ./semantic/rules/spacing/rule.go
 
 # check a host path mounted by the consumer Compose file
 go-fmt check --host-path /absolute/host/project/pkg/api
+
+# check only tracked Go files changed vs HEAD
+go-fmt check --git-diff
+
+# check multiple mounted paths
+go-fmt check --host-path "$PWD/pkg/api" --host-path "$PWD/internal/app"
 ```
 
-The stand-alone CLI formats Go source only. Repository-local `make format` also runs Oxc formatting for supported non-Go files through the `tooling` workspace.
+The stand-alone CLI formats Go source only. Repository-local `make format` also runs Oxc formatting for supported non-Go files through the `tooling` workspace. With the default `ARGS=.`, it starts with changed tracked and untracked files, then widens Go formatting to the full `semantic` workspace if untouched files would still fail the semantic check. Oxc remains scoped to the selected files.
 
 ## Docker
 
@@ -160,7 +178,13 @@ services:
             - .:/work
         environment:
             HOST_PROJECT_PATH: ${PWD}
-        command: ['help']
+        # --host-path is repeatable; each path must stay under HOST_PROJECT_PATH.
+        command:
+            - format
+            - --host-path
+            - ${PWD}/pkg/api
+            - --host-path
+            - ${PWD}/internal/app
 ```
 
 Download it into your project:
@@ -169,12 +193,25 @@ Download it into your project:
 curl -o go-fmt.compose.yaml https://raw.githubusercontent.com/oullin/go-fmt/main/examples/consumer/go-fmt.compose.yaml
 ```
 
-Then run:
+If your app repository has Go code under `pkg/api` and `internal/app`, run from the app repo root:
 
 ```bash
-docker compose -f go-fmt.compose.yaml run --rm go-fmt check .
-docker compose -f go-fmt.compose.yaml run --rm go-fmt format .
+docker compose -f go-fmt.compose.yaml run --rm go-fmt
+docker compose -f go-fmt.compose.yaml run --rm go-fmt check --host-path "$PWD/pkg/api" --host-path "$PWD/internal/app"
 ```
+
+The first command uses the service's default `command:` from the Compose file:
+
+```yaml
+command:
+    - format
+    - --host-path
+    - ${PWD}/pkg/api
+    - --host-path
+    - ${PWD}/internal/app
+```
+
+If your layout differs, update those `--host-path` values in `go-fmt.compose.yaml`, and when you override the service command with `check` or another subcommand, pass the same host paths again on the `docker compose run` command line.
 
 ### Why Compose is the default recommendation
 
@@ -188,8 +225,8 @@ docker compose -f go-fmt.compose.yaml run --rm go-fmt format .
 If your project already defines a `go-fmt` service, use it the same way:
 
 ```bash
-docker compose -f api/docker.api.compose.yaml run --rm go-fmt check .
-docker compose -f api/docker.api.compose.yaml run --rm go-fmt format .
+docker compose -f api/docker.api.compose.yaml run --rm go-fmt
+docker compose -f api/docker.api.compose.yaml run --rm go-fmt check --host-path "$PWD/pkg/api" --host-path "$PWD/internal/app"
 ```
 
 ### Shared Compose files
@@ -197,14 +234,14 @@ docker compose -f api/docker.api.compose.yaml run --rm go-fmt format .
 If the Compose file lives outside the project you want to format, pass `--project-directory "$PWD"` so the current project is mounted instead of the directory that stores the Compose file:
 
 ```bash
-docker compose -f /path/to/go-fmt.compose.yaml --project-directory "$PWD" run --rm go-fmt check .
-docker compose -f /path/to/go-fmt.compose.yaml --project-directory "$PWD" run --rm go-fmt format .
+docker compose -f /path/to/go-fmt.compose.yaml --project-directory "$PWD" run --rm go-fmt
+docker compose -f /path/to/go-fmt.compose.yaml --project-directory "$PWD" run --rm go-fmt check --host-path "$PWD/pkg/api" --host-path "$PWD/internal/app"
 ```
 
-To target a mounted subdirectory with `--host-path`:
+To target mounted subdirectories with repeated `--host-path` while overriding the service command:
 
 ```bash
-docker compose -f /path/to/go-fmt.compose.yaml --project-directory "$PWD" run --rm go-fmt format --host-path "$PWD/pkg/api"
+docker compose -f /path/to/go-fmt.compose.yaml --project-directory "$PWD" run --rm go-fmt format --host-path "$PWD/pkg/api" --host-path "$PWD/internal/app"
 ```
 
 Paths outside the caller's current directory are intentionally rejected.
@@ -229,6 +266,12 @@ All fields are optional:
 rules:
     spacing:
         enabled: true
+    declaration_order:
+        enabled: true
+    callback_extraction:
+        enabled: true
+    trimspace:
+        enabled: true
 
 formatters:
     gofmt: true
@@ -246,20 +289,27 @@ not_name:
     - '*.pb.go'
 ```
 
-| Field                   | Type | Default                          | Description                                 |
-| ----------------------- | ---- | -------------------------------- | ------------------------------------------- |
-| `rules.spacing.enabled` | bool | `true`                           | Enable or disable the spacing rule          |
-| `formatters.gofmt`      | bool | `true`                           | Run `gofmt` after semantic rules            |
-| `formatters.goimports`  | bool | `true`                           | Run `goimports` after `gofmt`               |
-| `exclude`               | list | `.git`, `node_modules`, `vendor` | Directory names to skip during tree walking |
-| `not_path`              | list | Empty                            | Substring matches against full file paths   |
-| `not_name`              | list | Empty                            | Glob patterns matched against file names    |
+| Field                               | Type | Default                          | Description                                                 |
+| ----------------------------------- | ---- | -------------------------------- | ----------------------------------------------------------- |
+| `rules.spacing.enabled`             | bool | `true`                           | Enable or disable blank-line semantics                      |
+| `rules.declaration_order.enabled`   | bool | `true`                           | Enable or disable top-level `const`/`var`/`type` reordering |
+| `rules.callback_extraction.enabled` | bool | `true`                           | Enable or disable inline callback extraction                |
+| `rules.trimspace.enabled`           | bool | `true`                           | Enable or disable `strings.TrimSpace` empty-string rewrites |
+| `formatters.gofmt`                  | bool | `true`                           | Run `gofmt` after semantic rules                            |
+| `formatters.goimports`              | bool | `true`                           | Run `goimports` after `gofmt`                               |
+| `exclude`                           | list | `.git`, `node_modules`, `vendor` | Directory names to skip during tree walking                 |
+| `not_path`                          | list | Empty                            | Substring matches against full file paths                   |
+| `not_name`                          | list | Empty                            | Glob patterns matched against file names                    |
 
-## Spacing Rule
+## Semantic Rules
 
-The built-in `spacing` rule is AST-based. It enforces semantic blank-line boundaries and declaration ordering before standard formatters run.
+`go-fmt` runs four default-on semantic rules before standard formatters.
 
-### What it enforces
+### `spacing`
+
+The `spacing` rule is AST-based and enforces semantic blank-line boundaries.
+
+#### What it enforces
 
 **Blank line before control flow and jump-style statements**
 
@@ -310,9 +360,9 @@ func run() {
 }
 ```
 
-**Blank lines around standalone `var` declarations**
+**Blank lines around standalone `const` and `var` declarations**
 
-Standalone `var` declarations are separated from surrounding statements unless they are already grouped with nearby `var` declarations or short assignments.
+Standalone `const` and `var` declarations are separated from surrounding statements unless they are already grouped with adjacent declarations of the same kind.
 
 ```go
 // before
@@ -332,9 +382,9 @@ func run() {
 }
 ```
 
-**Blank lines around stdlib sorting calls**
+**Blank lines around standalone calls**
 
-Standalone stdlib sorting calls are separated from surrounding statements with a blank line. This applies to `sort.*(...)` and `slices.Sort*(...)`, including renamed imports.
+Standalone calls are separated from surrounding statements. This includes generic `fn(...)` / `obj.fn(...)` calls, `sort.*(...)`, `slices.Sort*(...)`, `math/rand`, `math/rand/v2`, `next.ServeHTTP(...)`, `route.Group(...)`, and `routes.Group(...)`.
 
 ```go
 // before
@@ -355,32 +405,6 @@ func run(values []string) {
     stdsort.Strings(values)
 
     consume(values)
-}
-```
-
-**Blank lines around stdlib random calls**
-
-Standalone stdlib random calls are separated from surrounding statements with a blank line. This applies to `rand.*(...)` from `math/rand` and `math/rand/v2`, including renamed imports.
-
-```go
-// before
-import stdrand "math/rand"
-
-func run() {
-    prepare()
-    stdrand.Int()
-    consume()
-}
-
-// after
-import stdrand "math/rand"
-
-func run() {
-    prepare()
-
-    stdrand.Int()
-
-    consume()
 }
 ```
 
@@ -403,9 +427,9 @@ func run() {
 }
 ```
 
-**Type declarations at the top of the file**
+**Blank lines around function assignments and mutex boundaries**
 
-All `type` definitions are moved above non-type declarations, after the import block.
+Short assignments whose right-hand side is a func literal are separated from surrounding statements. The rule also inserts a blank line after `*.mu.RLock()` and before non-deferred `*.mu.RUnlock()`.
 
 ### Where it applies
 
@@ -414,6 +438,28 @@ The spacing rule inspects statement lists inside:
 - Function bodies (`BlockStmt`)
 - `case` and `default` clauses (`CaseClause`)
 - `select` communication clauses (`CommClause`)
+
+### `declaration_order`
+
+Top-level declarations are reordered to:
+
+1. imports
+2. file-scope `const`
+3. file-scope `var`
+4. file-scope `type`
+5. everything else
+
+Directive-bound declarations remain attached to their directives. In particular, `//go:embed` stays immediately above the `var` it applies to.
+If a `//go:embed` directive is separated from its `var` by a misplaced top-level declaration such as a `type`, formatting normalizes the file by moving the bound `var` directly under the directive.
+
+### `callback_extraction`
+
+Inline func literals used as composite literal field values are extracted into local variables immediately above the containing statement. Direct labeled statements are skipped so extraction does not insert declarations between a `goto` and its label target.
+
+### `trimspace`
+
+Empty-string comparisons are rewritten to use `strings.TrimSpace(...)`, including `== ""`, `!= ""`, reversed literal comparisons, and control-flow init conditions.
+When a `strings` import already exists, the rule preserves its style: aliased imports reuse the alias, dot imports emit `TrimSpace(...)`, and blank imports are left unchanged. Default-import rewrites are skipped when `strings` is shadowed in scope so the formatter does not introduce uncompilable selectors.
 
 ## File Discovery
 
@@ -448,6 +494,8 @@ Human-readable output for local runs:
 
   Result: fail. 1 changed, 2 violation(s), 0 error(s).
 ```
+
+When `--git-diff` is used, the file count and any listed files are limited to tracked Go files changed versus `HEAD`.
 
 ### JSON
 
@@ -548,6 +596,7 @@ make help
 pnpm turbo run check --filter=semantic
 pnpm turbo run check --filter=tooling
 make format
+make format ARGS=semantic
 make build
 make release
 make test
@@ -561,13 +610,13 @@ make clean
 
 ### Make variables
 
-| Variable            | Default                                             | Description                           |
-| ------------------- | --------------------------------------------------- | ------------------------------------- |
-| `ARGS`              | `.`                                                 | Files or directories to target        |
-| `VERSION`           | `git describe ...` or `dev`                         | Build version injected into binaries  |
-| `CGO_ENABLED`       | `0`                                                 | CGO setting for build and release     |
-| `DIST_DIR`          | `dist`                                              | Output directory for release binaries |
-| `RELEASE_PLATFORMS` | `darwin/amd64 darwin/arm64 linux/amd64 linux/arm64` | Platforms built by `make release`     |
+| Variable            | Default                                             | Description                                                                                                                               |
+| ------------------- | --------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------- |
+| `ARGS`              | `.`                                                 | With `.`, format changed tracked/untracked files first, then widen semantic formatting if needed; set a path to target a specific subtree |
+| `VERSION`           | `git describe ...` or `dev`                         | Build version injected into binaries                                                                                                      |
+| `CGO_ENABLED`       | `0`                                                 | CGO setting for build and release                                                                                                         |
+| `DIST_DIR`          | `dist`                                              | Output directory for release binaries                                                                                                     |
+| `RELEASE_PLATFORMS` | `darwin/amd64 darwin/arm64 linux/amd64 linux/arm64` | Platforms built by `make release`                                                                                                         |
 
 ### Examples
 
@@ -600,13 +649,16 @@ semantic/config/           YAML config loading with defaults
 semantic/engine/           Rule orchestration, file collection, formatter pipeline, reporting
 semantic/rules/            Rule interface contract
 semantic/rules/spacing/    AST-based spacing rule
+semantic/rules/declaration_order/ Top-level declaration ordering rule
+semantic/rules/callback_extraction/ Inline callback extraction rule
+semantic/rules/trimspace/  Empty-string comparison rewrite rule
 tooling/                   Oxc-based formatting for supported non-Go file types
 ```
 
 ### Formatting pipeline
 
 ```text
-source file -> spacing rule -> gofmt -> goimports -> result
+source file -> declaration_order -> callback_extraction -> trimspace -> spacing -> gofmt -> goimports -> result
 ```
 
 Each step runs only when enabled in config. If a file is unchanged after the pipeline, it is reported as clean.

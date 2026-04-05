@@ -8,6 +8,7 @@ oxfmt_bin="${OXFMT_BIN:-tooling/node_modules/.bin/oxfmt}"
 
 declare -a args=("$@")
 declare -a semantic_args=()
+declare -a selected_args=()
 
 if [[ ${#args[@]} -eq 0 ]]; then
 	args=(.)
@@ -57,7 +58,49 @@ to_semantic_arg() {
 	esac
 }
 
+is_repo_root_selector() {
+	local arg="$1"
+
+	case "$arg" in
+		.|"$repo_root"|"$GO_WORKDIR"|"$repo_root/$GO_WORKDIR")
+			return 0
+			;;
+		*)
+			return 1
+			;;
+	esac
+}
+
+use_diff_selection=true
+has_untracked_semantic_go_args=false
+
 for raw_arg in "${args[@]}"; do
+	arg="$(normalize_arg "$raw_arg")"
+	if ! is_repo_root_selector "$arg"; then
+		use_diff_selection=false
+		break
+	fi
+done
+
+if [[ "$use_diff_selection" == true ]] && git -C "$repo_root" rev-parse --is-inside-work-tree >/dev/null 2>&1; then
+	while IFS= read -r -d '' path; do
+		selected_args+=("$path")
+	done < <(git -C "$repo_root" diff --name-only --diff-filter=ACMR -z HEAD --)
+
+	while IFS= read -r -d '' path; do
+		selected_args+=("$path")
+		arg="$(normalize_arg "$path")"
+		if semantic_arg="$(to_semantic_arg "$arg")" && [[ "$semantic_arg" == *.go ]]; then
+			has_untracked_semantic_go_args=true
+		fi
+	done < <(git -C "$repo_root" ls-files --others --exclude-standard -z)
+else
+	while IFS= read -r -d '' path; do
+		selected_args+=("$path")
+	done < <(git -C "$repo_root" ls-files --cached --others --exclude-standard -z -- "${args[@]}")
+fi
+
+for raw_arg in "${selected_args[@]}"; do
 	arg="$(normalize_arg "$raw_arg")"
 	if semantic_arg="$(to_semantic_arg "$arg")"; then
 		semantic_args+=("$semantic_arg")
@@ -65,8 +108,17 @@ for raw_arg in "${args[@]}"; do
 done
 
 if [[ ${#semantic_args[@]} -gt 0 ]]; then
-	go -C "$GO_WORKDIR" run "$CMD" format --cwd . "${semantic_args[@]}"
+	if [[ "$use_diff_selection" == true && "$has_untracked_semantic_go_args" == false ]]; then
+		go -C "$GO_WORKDIR" run "$CMD" format --cwd . --git-diff
+	else
+		go -C "$GO_WORKDIR" run "$CMD" format --cwd . "${semantic_args[@]}"
+	fi
 fi
 
-git ls-files --cached --others --exclude-standard -z -- "${args[@]}" \
-	| xargs -0 "$oxfmt_bin" --write --no-error-on-unmatched-pattern
+if [[ "$use_diff_selection" == true ]] && ! go -C "$GO_WORKDIR" run "$CMD" check --cwd . . >/dev/null 2>&1; then
+	go -C "$GO_WORKDIR" run "$CMD" format --cwd . .
+fi
+
+if [[ ${#selected_args[@]} -gt 0 ]]; then
+	printf '%s\0' "${selected_args[@]}" | xargs -0 "$oxfmt_bin" --write --no-error-on-unmatched-pattern
+fi

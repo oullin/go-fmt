@@ -69,4 +69,6 @@ fi
 printf '\n%bExamples:%b\n' "$bold" "$reset"
 printf '  %b%s%b\n' "$example_color" "pnpm turbo run check --filter=semantic" "$reset"
 printf '  %b%s%b\n' "$example_color" "pnpm turbo run check --filter=tooling" "$reset"
+printf '  %b%s%b\n' "$example_color" "make format" "$reset"
+printf '  %b%s%b\n' "$example_color" "make format ARGS=semantic" "$reset"
 printf '  %b%s%b\n' "$example_color" "make fmt-source" "$reset"

@@ -17,6 +17,8 @@ func CollectGoFiles(paths []string, cfg config.Config) ([]string, error) {
 
 	var files []string
 
+	seen := map[string]struct{}{}
+
 	for _, root := range paths {
 		absRoot, err := filepath.Abs(root)
 
@@ -32,7 +34,10 @@ func CollectGoFiles(paths []string, cfg config.Config) ([]string, error) {
 
 		if !info.IsDir() {
 			if isGoSource(absRoot) && !isExcludedFile(absRoot, cfg) {
-				files = append(files, absRoot)
+				if _, ok := seen[absRoot]; !ok {
+					files = append(files, absRoot)
+					seen[absRoot] = struct{}{}
+				}
 			}
 
 			continue
@@ -52,7 +57,10 @@ func CollectGoFiles(paths []string, cfg config.Config) ([]string, error) {
 			}
 
 			if isGoSource(path) && !isExcludedFile(path, cfg) {
-				files = append(files, path)
+				if _, ok := seen[path]; !ok {
+					files = append(files, path)
+					seen[path] = struct{}{}
+				}
 			}
 
 			return nil
@@ -66,6 +74,28 @@ func CollectGoFiles(paths []string, cfg config.Config) ([]string, error) {
 	slices.Sort(files)
 
 	return files, nil
+}
+
+func FilterFiles(files, selected []string) []string {
+	if len(files) == 0 || len(selected) == 0 {
+		return nil
+	}
+
+	allowed := make(map[string]struct{}, len(selected))
+
+	for _, path := range selected {
+		allowed[path] = struct{}{}
+	}
+
+	filtered := make([]string, 0, len(files))
+
+	for _, path := range files {
+		if _, ok := allowed[path]; ok {
+			filtered = append(filtered, path)
+		}
+	}
+
+	return filtered
 }
 
 func shouldSkipDir(path, root, name string, cfg config.Config) bool {

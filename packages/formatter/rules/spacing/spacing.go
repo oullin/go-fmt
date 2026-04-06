@@ -151,6 +151,12 @@ func analyse(filename string, src []byte) ([]rules.Violation, []byte, error) {
 			formatted = reordered
 		}
 
+		formatted, err = repairDetachedEmbedDirectives(filename, formatted)
+
+		if err != nil {
+			return nil, nil, err
+		}
+
 		formatted = collapseEmbedSpacing(formatted)
 	}
 
@@ -605,6 +611,8 @@ func reorderTypeDecls(filename string, src []byte) ([]byte, bool, error) {
 		return nil, false, err
 	}
 
+	attachEmbedDirectiveDocs(file)
+
 	desired := desiredDeclOrder(file)
 
 	if declOrdersEqual(file.Decls, desired) {
@@ -620,6 +628,18 @@ func reorderTypeDecls(filename string, src []byte) ([]byte, bool, error) {
 	}
 
 	return out.Bytes(), true, nil
+}
+
+func attachEmbedDirectiveDocs(file *ast.File) {
+	for decl, group := range embedDirectiveMatches(file) {
+		genDecl, ok := decl.(*ast.GenDecl)
+
+		if !ok || genDecl.Doc != nil {
+			continue
+		}
+
+		genDecl.Doc = group
+	}
 }
 
 func embedAdjacencyViolations(file *ast.File, fset *token.FileSet, filename string) []rules.Violation {
@@ -642,6 +662,77 @@ func embedAdjacencyViolations(file *ast.File, fset *token.FileSet, filename stri
 	}
 
 	return violations
+}
+
+func repairDetachedEmbedDirectives(filename string, src []byte) ([]byte, error) {
+	fset := token.NewFileSet()
+	file, err := parser.ParseFile(fset, filename, src, parser.ParseComments)
+
+	if err != nil {
+		return nil, err
+	}
+
+	type embedMove struct {
+		commentStartLine int
+		commentEndLine   int
+		declLine         int
+	}
+
+	var moves []embedMove
+
+	for decl, group := range embedDirectiveMatches(file) {
+		commentEndLine := fset.Position(group.End()).Line
+		declLine := fset.Position(decl.Pos()).Line
+
+		if declLine == commentEndLine+1 {
+			continue
+		}
+
+		moves = append(moves, embedMove{
+			commentStartLine: fset.Position(group.Pos()).Line,
+			commentEndLine:   commentEndLine,
+			declLine:         declLine,
+		})
+	}
+
+	if len(moves) == 0 {
+		return src, nil
+	}
+
+	lines := bytes.SplitAfter(src, []byte{'\n'})
+
+	slices.SortStableFunc(moves, func(a embedMove, b embedMove) int {
+		switch {
+		case a.commentStartLine > b.commentStartLine:
+			return -1
+		case a.commentStartLine < b.commentStartLine:
+			return 1
+		default:
+			return 0
+		}
+	})
+
+	for _, move := range moves {
+		groupStart := move.commentStartLine - 1
+		groupEnd := move.commentEndLine
+		insertAt := move.declLine - 1
+		removeEnd := groupEnd
+
+		if groupEnd < len(lines) && len(bytes.TrimSpace(lines[groupEnd])) == 0 {
+			removeEnd++
+		}
+
+		groupLines := append([][]byte(nil), lines[groupStart:groupEnd]...)
+		lines = append(lines[:groupStart], lines[removeEnd:]...)
+
+		if insertAt > groupStart {
+			insertAt -= removeEnd - groupStart
+		}
+
+		lines = append(lines[:insertAt], append(groupLines, lines[insertAt:]...)...)
+	}
+
+	return bytes.Join(lines, nil), nil
 }
 
 func topLevelDeclBlocks(file *ast.File) []declBlock {
@@ -678,16 +769,14 @@ func topLevelDeclBlocks(file *ast.File) []declBlock {
 
 func desiredDeclOrder(file *ast.File) []ast.Decl {
 	blocks := topLevelDeclBlocks(file)
-	importsEnd := 0
-
-	for importsEnd < len(blocks) && isImportDecl(blocks[importsEnd].decl) {
-		importsEnd++
-	}
+	importsEnd := leadingImportDeclsEnd(file.Decls)
+	preservedImports := map[ast.Decl]struct{}{}
 
 	reordered := make([]ast.Decl, 0, len(blocks))
 
-	for _, block := range blocks[:importsEnd] {
-		reordered = append(reordered, block.decl)
+	for _, decl := range file.Decls[:importsEnd] {
+		reordered = append(reordered, decl)
+		preservedImports[decl] = struct{}{}
 	}
 
 	segment := make([]declBlock, 0, len(blocks)-importsEnd)
@@ -707,7 +796,11 @@ func desiredDeclOrder(file *ast.File) []ast.Decl {
 		segment = segment[:0]
 	}
 
-	for _, block := range blocks[importsEnd:] {
+	for _, block := range blocks {
+		if _, ok := preservedImports[block.decl]; ok {
+			continue
+		}
+
 		if block.anchored {
 			flush()
 			reordered = append(reordered, block.decl)
@@ -720,6 +813,16 @@ func desiredDeclOrder(file *ast.File) []ast.Decl {
 	flush()
 
 	return reordered
+}
+
+func leadingImportDeclsEnd(decls []ast.Decl) int {
+	importsEnd := 0
+
+	for importsEnd < len(decls) && isImportDecl(decls[importsEnd]) {
+		importsEnd++
+	}
+
+	return importsEnd
 }
 
 func declOrdersEqual(current []ast.Decl, desired []ast.Decl) bool {

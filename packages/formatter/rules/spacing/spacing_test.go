@@ -1143,6 +1143,50 @@ func TestApplyRepairsDetachedGoEmbedDirectiveWithTab(t *testing.T) {
 	}
 }
 
+func TestApplyPreservesImportsBeforeAnchoredDecls(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name      string
+		directive string
+	}{
+		{
+			name:      "space separated directive",
+			directive: "//go:embed foo.txt",
+		},
+		{
+			name:      "tab separated directive",
+			directive: "//go:embed\tfoo.txt",
+		},
+	}
+
+	for _, tt := range tests {
+		tt := tt
+
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			path := writeTempGoFile(t, "package sample\n\n"+tt.directive+"\n\nimport \"embed\"\n\ntype runtime struct{}\n\nvar rootTemplateFS embed.FS\n")
+
+			violations, formatted, err := New().Apply(path, mustReadFile(t, path))
+
+			if err != nil {
+				t.Fatalf("apply: %v", err)
+			}
+
+			if len(violations) != 1 {
+				t.Fatalf("expected 1 violation, got %d", len(violations))
+			}
+
+			expected := "package sample\n\nimport \"embed\"\n\n" + tt.directive + "\nvar rootTemplateFS embed.FS\n\ntype runtime struct{}\n"
+
+			if string(formatted) != expected {
+				t.Fatalf("expected imports to remain before anchored declaration, got:\n%s", formatted)
+			}
+		})
+	}
+}
+
 func TestIsEmbedDirectiveTextRejectsInvalidPrefixes(t *testing.T) {
 	t.Parallel()
 

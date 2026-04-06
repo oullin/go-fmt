@@ -140,17 +140,19 @@ func analyse(filename string, src []byte) ([]rules.Violation, []byte, error) {
 		formatted = applyInsertions(formatted, insertions)
 	}
 
-	reordered, changed, err := reorderTypeDecls(filename, formatted)
+	if len(violations) > 0 {
+		reordered, changed, err := reorderTypeDecls(filename, formatted)
 
-	if err != nil {
-		return nil, nil, err
+		if err != nil {
+			return nil, nil, err
+		}
+
+		if changed {
+			formatted = reordered
+		}
+
+		formatted = collapseEmbedSpacing(formatted)
 	}
-
-	if changed {
-		formatted = reordered
-	}
-
-	formatted = collapseEmbedSpacing(formatted)
 
 	return violations, formatted, nil
 }
@@ -793,13 +795,17 @@ func nextTopLevelVarDeclAfter(decls []ast.Decl, pos token.Pos) (ast.Decl, bool) 
 	return nil, false
 }
 
+func isEmbedDirectiveText(text string) bool {
+	return hasEmbedDirectivePrefix(strings.TrimSpace(text))
+}
+
 func containsEmbedDirective(group *ast.CommentGroup) bool {
 	if group == nil {
 		return false
 	}
 
 	for _, comment := range group.List {
-		if strings.HasPrefix(strings.TrimSpace(comment.Text), "//go:embed ") {
+		if isEmbedDirectiveText(comment.Text) {
 			return true
 		}
 	}
@@ -845,7 +851,7 @@ func collapseEmbedSpacing(src []byte) []byte {
 			continue
 		}
 
-		if !bytes.HasPrefix(bytes.TrimSpace(lines[i]), []byte("//go:embed ")) {
+		if !isEmbedDirectiveLine(lines[i]) {
 			continue
 		}
 
@@ -861,6 +867,40 @@ func collapseEmbedSpacing(src []byte) []byte {
 	}
 
 	return bytes.Join(out, []byte{'\n'})
+}
+
+func isEmbedDirectiveLine(line []byte) bool {
+	return hasEmbedDirectiveLinePrefix(bytes.TrimSpace(line))
+}
+
+func hasEmbedDirectivePrefix(text string) bool {
+	const prefix = "//go:embed"
+
+	if !strings.HasPrefix(text, prefix) || len(text) == len(prefix) {
+		return false
+	}
+
+	switch text[len(prefix)] {
+	case ' ', '\t':
+		return true
+	default:
+		return false
+	}
+}
+
+func hasEmbedDirectiveLinePrefix(line []byte) bool {
+	const prefix = "//go:embed"
+
+	if !bytes.HasPrefix(line, []byte(prefix)) || len(line) == len(prefix) {
+		return false
+	}
+
+	switch line[len(prefix)] {
+	case ' ', '\t':
+		return true
+	default:
+		return false
+	}
 }
 
 func isVarDeclStart(line []byte) bool {

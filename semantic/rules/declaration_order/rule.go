@@ -165,7 +165,7 @@ func collapseEmbedSpacing(src []byte) []byte {
 			continue
 		}
 
-		if !bytes.HasPrefix(bytes.TrimSpace(lines[i]), []byte("//go:embed ")) {
+		if !isEmbedDirectiveLine(lines[i]) {
 			continue
 		}
 
@@ -181,6 +181,25 @@ func collapseEmbedSpacing(src []byte) []byte {
 	}
 
 	return bytes.Join(out, []byte{'\n'})
+}
+
+func isEmbedDirectiveLine(line []byte) bool {
+	return hasEmbedDirectiveLinePrefix(bytes.TrimSpace(line))
+}
+
+func hasEmbedDirectiveLinePrefix(line []byte) bool {
+	const prefix = "//go:embed"
+
+	if !bytes.HasPrefix(line, []byte(prefix)) || len(line) == len(prefix) {
+		return false
+	}
+
+	switch line[len(prefix)] {
+	case ' ', '\t':
+		return true
+	default:
+		return false
+	}
 }
 
 func isVarDeclStart(line []byte) bool {

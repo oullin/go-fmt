@@ -224,6 +224,46 @@ type runtime struct{}
 	}
 }
 
+func TestApplyPreservesGoEmbedAdjacencyWithTab(t *testing.T) {
+	path := writeTempGoFile(t, "package sample\n\nimport \"embed\"\n\n//go:embed\tfoo.txt\n\ntype runtime struct{}\n\nvar rootTemplateFS embed.FS\n")
+
+	violations, formatted, err := New().Apply(path, mustReadFile(t, path))
+
+	if err != nil {
+		t.Fatalf("apply: %v", err)
+	}
+
+	if len(violations) != 1 {
+		t.Fatalf("expected 1 violation, got %d", len(violations))
+	}
+
+	expected := "package sample\n\nimport \"embed\"\n\n//go:embed\tfoo.txt\nvar rootTemplateFS embed.FS\n\ntype runtime struct{}\n"
+
+	if !bytes.Equal(formatted, []byte(expected)) {
+		t.Fatalf("expected embed directive repair output, got:\n%s", formatted)
+	}
+}
+
+func TestApplyLeavesOrderedGoEmbedDirectiveWithTabUnchanged(t *testing.T) {
+	path := writeTempGoFile(t, "package sample\n\nimport \"embed\"\n\n//go:embed\tfoo.txt\nvar rootTemplateFS embed.FS\n\ntype runtime struct{}\n")
+
+	input := mustReadFile(t, path)
+
+	violations, formatted, err := New().Apply(path, input)
+
+	if err != nil {
+		t.Fatalf("apply: %v", err)
+	}
+
+	if len(violations) != 0 {
+		t.Fatalf("expected no violations, got %d", len(violations))
+	}
+
+	if !bytes.Equal(formatted, input) {
+		t.Fatalf("expected already attached go:embed declaration to remain unchanged, got:\n%s", formatted)
+	}
+}
+
 func TestCollapseEmbedSpacingRecognizesVarForms(t *testing.T) {
 	t.Parallel()
 
@@ -295,6 +335,41 @@ type runtime struct{}
 //go:embed foo.txt
 
 type runtime struct{}
+`,
+		},
+		{
+			name:     "tab separated directive",
+			src:      "package sample\n\n//go:embed\tfoo.txt\n\nvar rootTemplateFS embed.FS\n",
+			expected: "package sample\n\n//go:embed\tfoo.txt\nvar rootTemplateFS embed.FS\n",
+		},
+		{
+			name: "bare directive",
+			src: `package sample
+
+//go:embed
+
+var rootTemplateFS embed.FS
+`,
+			expected: `package sample
+
+//go:embed
+
+var rootTemplateFS embed.FS
+`,
+		},
+		{
+			name: "embedded prefix",
+			src: `package sample
+
+//go:embedded foo.txt
+
+var rootTemplateFS embed.FS
+`,
+			expected: `package sample
+
+//go:embedded foo.txt
+
+var rootTemplateFS embed.FS
 `,
 		},
 		{

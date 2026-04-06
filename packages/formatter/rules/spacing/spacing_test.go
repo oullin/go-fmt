@@ -1104,6 +1104,88 @@ type runtime struct{}
 	}
 }
 
+func TestApplyKeepsAttachedGoEmbedDirectiveWithTabUnchanged(t *testing.T) {
+	path := writeTempGoFile(t, "package sample\n\nimport \"embed\"\n\n//go:embed\tfoo.txt\nvar rootTemplateFS embed.FS\n\ntype runtime struct{}\n")
+
+	original := string(mustReadFile(t, path))
+	violations, formatted, err := New().Apply(path, []byte(original))
+
+	if err != nil {
+		t.Fatalf("apply: %v", err)
+	}
+
+	if len(violations) != 0 {
+		t.Fatalf("expected 0 violations, got %d", len(violations))
+	}
+
+	if string(formatted) != original {
+		t.Fatalf("expected unchanged output, got:\n%s", formatted)
+	}
+}
+
+func TestApplyRepairsDetachedGoEmbedDirectiveWithTab(t *testing.T) {
+	path := writeTempGoFile(t, "package sample\n\nimport \"embed\"\n\n//go:embed\tfoo.txt\n\ntype runtime struct{}\n\nvar rootTemplateFS embed.FS\n")
+
+	violations, formatted, err := New().Apply(path, mustReadFile(t, path))
+
+	if err != nil {
+		t.Fatalf("apply: %v", err)
+	}
+
+	if len(violations) != 1 {
+		t.Fatalf("expected 1 violation, got %d", len(violations))
+	}
+
+	expected := "package sample\n\nimport \"embed\"\n\n//go:embed\tfoo.txt\nvar rootTemplateFS embed.FS\n\ntype runtime struct{}\n"
+
+	if string(formatted) != expected {
+		t.Fatalf("expected repaired go:embed placement, got:\n%s", formatted)
+	}
+}
+
+func TestIsEmbedDirectiveTextRejectsInvalidPrefixes(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name string
+		text string
+		want bool
+	}{
+		{
+			name: "space separated directive",
+			text: "//go:embed foo.txt",
+			want: true,
+		},
+		{
+			name: "tab separated directive",
+			text: "//go:embed\tfoo.txt",
+			want: true,
+		},
+		{
+			name: "bare directive",
+			text: "//go:embed",
+			want: false,
+		},
+		{
+			name: "embedded prefix",
+			text: "//go:embedded foo.txt",
+			want: false,
+		},
+	}
+
+	for _, tt := range tests {
+		tt := tt
+
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			if got := isEmbedDirectiveText(tt.text); got != tt.want {
+				t.Fatalf("isEmbedDirectiveText(%q) = %v, want %v", tt.text, got, tt.want)
+			}
+		})
+	}
+}
+
 func TestApplyReordersTypesWithoutEmbedDirective(t *testing.T) {
 	path := writeTempGoFile(t, `package sample
 

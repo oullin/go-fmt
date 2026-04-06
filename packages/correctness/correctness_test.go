@@ -1,0 +1,283 @@
+package correctness
+
+import (
+	"errors"
+	"os"
+	"os/exec"
+	"path/filepath"
+	"strings"
+	"testing"
+)
+
+func TestParseGoEnvValuesPreservesOrderAndEmptyLines(t *testing.T) {
+	t.Run("leading empty line falls back to gomod", func(t *testing.T) {
+		values := parseGoEnvValues([]byte("\n/work/module/go.mod\n"), 2)
+
+		if len(values) != 2 {
+			t.Fatalf("unexpected values length: %d", len(values))
+		}
+
+		if values[0] != "" || values[1] != "/work/module/go.mod" {
+			t.Fatalf("unexpected values: %#v", values)
+		}
+	})
+
+	t.Run("crlf output trims carriage returns", func(t *testing.T) {
+		values := parseGoEnvValues([]byte("C:\\work\\go.work\r\nC:\\work\\go.mod\r\n"), 2)
+
+		if len(values) != 2 {
+			t.Fatalf("unexpected values length: %d", len(values))
+		}
+
+		if strings.Contains(values[0], "\r") || strings.Contains(values[1], "\r") {
+			t.Fatalf("unexpected carriage returns in values: %#v", values)
+		}
+	})
+}
+
+func TestPlannerBuildSkipsWhenDisabled(t *testing.T) {
+	plan, err := (Planner{}).Build(BuildOptions{
+		WorkRoot: t.TempDir(),
+		Config: Config{
+			Vet: Toggle{Enabled: false},
+		},
+	})
+
+	if err != nil {
+		t.Fatalf("build plan: %v", err)
+	}
+
+	if plan.Enabled {
+		t.Fatalf("expected plan to be disabled: %#v", plan)
+	}
+}
+
+func TestPlannerBuildPrefersWorkspace(t *testing.T) {
+	workRoot := t.TempDir()
+	workspaceRoot := t.TempDir()
+	moduleRoot := t.TempDir()
+	workspaceFile := filepath.Join(workspaceRoot, "go.work")
+	moduleFile := filepath.Join(moduleRoot, "go.mod")
+
+	mustWriteFile(t, workspaceFile)
+	mustWriteFile(t, moduleFile)
+
+	restore := stubGoEnvOutput(t, func(string, ...string) ([]byte, error) {
+		return []byte(workspaceFile + "\n" + moduleFile + "\n"), nil
+	})
+
+	defer restore()
+
+	plan, err := (Planner{}).Build(BuildOptions{
+		WorkRoot: workRoot,
+		Config:   DefaultConfig(),
+	})
+
+	if err != nil {
+		t.Fatalf("build plan: %v", err)
+	}
+
+	if !plan.Enabled || plan.Root != workspaceRoot {
+		t.Fatalf("unexpected plan: %#v", plan)
+	}
+}
+
+func TestPlannerBuildFallsBackToModuleWhenWorkspaceUnset(t *testing.T) {
+	workRoot := t.TempDir()
+	moduleRoot := t.TempDir()
+	moduleFile := filepath.Join(moduleRoot, "go.mod")
+
+	mustWriteFile(t, moduleFile)
+
+	restore := stubGoEnvOutput(t, func(string, ...string) ([]byte, error) {
+		return []byte("\n" + moduleFile + "\n"), nil
+	})
+
+	defer restore()
+
+	plan, err := (Planner{}).Build(BuildOptions{
+		WorkRoot: workRoot,
+		Config:   DefaultConfig(),
+	})
+
+	if err != nil {
+		t.Fatalf("build plan: %v", err)
+	}
+
+	if !plan.Enabled || plan.Root != moduleRoot {
+		t.Fatalf("unexpected plan: %#v", plan)
+	}
+}
+
+func TestPlanExecuteRunsGoVetAcrossWorkspaceModules(t *testing.T) {
+	workspaceRoot := t.TempDir()
+	moduleA := filepath.Join(workspaceRoot, "module-a")
+	moduleB := filepath.Join(workspaceRoot, "module-b")
+
+	mustWriteGoFile(t, filepath.Join(moduleA, "go.mod"), "module example.com/module-a\n\ngo 1.25.0\n")
+	mustWriteGoFile(t, filepath.Join(moduleB, "go.mod"), "module example.com/module-b\n\ngo 1.25.0\n")
+	mustWriteGoFile(t, filepath.Join(moduleA, "sample.go"), `package sample
+
+import "fmt"
+
+func run() {
+	fmt.Printf("%d", "not-a-number")
+}
+`)
+	mustWriteGoFile(t, filepath.Join(moduleB, "sample.go"), `package sample
+
+func run() {
+	println("ok")
+}
+`)
+	mustWriteGoFile(t, filepath.Join(workspaceRoot, "go.work"), `go 1.25.0
+
+use (
+	./module-a
+	./module-b
+)
+`)
+
+	report := (Plan{Enabled: true, Root: workspaceRoot}).Execute()
+
+	if report.ErrorCount() != 1 {
+		t.Fatalf("expected one vet error, got %#v", report)
+	}
+
+	if report.Errors[0].File != moduleA {
+		t.Fatalf("unexpected error file: %#v", report.Errors[0])
+	}
+
+	if !strings.Contains(report.Errors[0].Message, "automatic go vet ./... failed") {
+		t.Fatalf("unexpected error message: %#v", report.Errors[0])
+	}
+}
+
+func TestPlannerBuildPropagatesCombinedLookupError(t *testing.T) {
+	restore := stubGoEnvOutput(t, func(string, ...string) ([]byte, error) {
+		return nil, &exec.ExitError{Stderr: []byte("go env failed\n")}
+	})
+
+	defer restore()
+
+	_, err := (Planner{}).Build(BuildOptions{
+		WorkRoot: t.TempDir(),
+		Config:   DefaultConfig(),
+	})
+
+	if err == nil {
+		t.Fatal("expected error")
+	}
+
+	if !strings.Contains(err.Error(), "resolve go GOWORK GOMOD: go env failed") {
+		t.Fatalf("unexpected error: %v", err)
+	}
+}
+
+func TestPlanExecuteSkipsOutsideModule(t *testing.T) {
+	report := (Plan{Enabled: true}).Execute()
+
+	if report.ErrorCount() != 0 {
+		t.Fatalf("expected empty report: %#v", report)
+	}
+}
+
+func TestExistingGoRootFiltersInvalidCandidates(t *testing.T) {
+	tempDir := t.TempDir()
+	validRoot := t.TempDir()
+	validPath := filepath.Join(validRoot, "go.mod")
+	dirCandidate := filepath.Join(tempDir, "go.mod")
+	wrongName := filepath.Join(tempDir, "other.file")
+
+	mustWriteFile(t, validPath)
+
+	if err := os.Mkdir(dirCandidate, 0o755); err != nil {
+		t.Fatalf("mkdir candidate: %v", err)
+	}
+
+	mustWriteFile(t, wrongName)
+
+	cases := []struct {
+		name     string
+		path     string
+		filename string
+		wantOK   bool
+		wantRoot string
+	}{
+		{name: "empty", path: "", filename: "go.mod"},
+		{name: "off", path: "off", filename: "go.mod"},
+		{name: "devnull", path: os.DevNull, filename: "go.mod"},
+		{name: "missing", path: filepath.Join(tempDir, "missing", "go.mod"), filename: "go.mod"},
+		{name: "directory", path: dirCandidate, filename: "go.mod"},
+		{name: "wrong basename", path: wrongName, filename: "go.mod"},
+		{name: "valid", path: validPath, filename: "go.mod", wantOK: true, wantRoot: validRoot},
+	}
+
+	for _, tc := range cases {
+		tc := tc
+		t.Run(tc.name, func(t *testing.T) {
+			root, ok := existingGoRoot(tc.path, tc.filename)
+
+			if ok != tc.wantOK {
+				t.Fatalf("unexpected ok: got %v want %v", ok, tc.wantOK)
+			}
+
+			if root != tc.wantRoot {
+				t.Fatalf("unexpected root: got %q want %q", root, tc.wantRoot)
+			}
+		})
+	}
+}
+
+func TestGoEnvWrapsGenericErrors(t *testing.T) {
+	restore := stubGoEnvOutput(t, func(string, ...string) ([]byte, error) {
+		return nil, errors.New("boom")
+	})
+
+	defer restore()
+
+	_, err := goEnv(t.TempDir(), "GOWORK", "GOMOD")
+
+	if err == nil {
+		t.Fatal("expected error")
+	}
+
+	if !strings.Contains(err.Error(), "resolve go GOWORK GOMOD: boom") {
+		t.Fatalf("unexpected error: %v", err)
+	}
+}
+
+func stubGoEnvOutput(t *testing.T, fn func(string, ...string) ([]byte, error)) func() {
+	t.Helper()
+
+	previous := goEnvOutput
+	goEnvOutput = fn
+
+	return func() {
+		goEnvOutput = previous
+	}
+}
+
+func mustWriteFile(t *testing.T, path string) {
+	t.Helper()
+
+	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+		t.Fatalf("mkdir parent: %v", err)
+	}
+
+	if err := os.WriteFile(path, []byte("module example.com/test\n"), 0o644); err != nil {
+		t.Fatalf("write file: %v", err)
+	}
+}
+
+func mustWriteGoFile(t *testing.T, path string, content string) {
+	t.Helper()
+
+	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+		t.Fatalf("mkdir parent: %v", err)
+	}
+
+	if err := os.WriteFile(path, []byte(content), 0o644); err != nil {
+		t.Fatalf("write file: %v", err)
+	}
+}

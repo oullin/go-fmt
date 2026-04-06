@@ -23,7 +23,9 @@ jobs:
             matrix:
                 workspace:
                     - semantic
-                    - tooling
+                    - correctness
+                    - orchestrator
+                    - support
 
         steps:
             - uses: actions/checkout@v6
@@ -37,16 +39,18 @@ jobs:
                   version: 10.33.0
 
             - uses: actions/setup-go@v6
-              if: matrix.workspace == 'semantic'
+              if: matrix.workspace != 'support'
               with:
-                  go-version-file: semantic/go.mod
-                  cache-dependency-path: semantic/go.sum
+                  go-version-file: packages/orchestrator/go.mod
+                  cache-dependency-path: |
+                      packages/semantic/go.sum
+                      packages/orchestrator/go.sum
 
             - name: Install workspace dependencies
               run: pnpm install --frozen-lockfile
 
             - name: Run ${{ matrix.workspace }} checks
-              run: pnpm turbo run check --filter=${{ matrix.workspace }}
+              run: ./scripts/with-storage-env.sh pnpm turbo run check --cache-dir=storage/.cache/turbo --filter=${{ matrix.workspace }}
 
     test:
         needs: check
@@ -57,8 +61,10 @@ jobs:
 
             - uses: actions/setup-go@v6
               with:
-                  go-version-file: semantic/go.mod
-                  cache-dependency-path: semantic/go.sum
+                  go-version-file: packages/orchestrator/go.mod
+                  cache-dependency-path: |
+                      packages/semantic/go.sum
+                      packages/orchestrator/go.sum
 
             - name: Go - Run all tests with the race detector
               run: make test-race

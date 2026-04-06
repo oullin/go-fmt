@@ -1,6 +1,6 @@
 # go-fmt
 
-[![Go Reference](https://pkg.go.dev/badge/github.com/oullin/go-fmt/semantic.svg)](https://pkg.go.dev/github.com/oullin/go-fmt/semantic)
+[![Go Reference](https://pkg.go.dev/badge/github.com/oullin/go-fmt/packages/orchestrator.svg)](https://pkg.go.dev/github.com/oullin/go-fmt/packages/orchestrator)
 [![Go 1.25](https://img.shields.io/badge/go-1.25-00ADD8?logo=go&logoColor=white)](https://go.dev/doc/go1.25)
 [![Tests](https://github.com/oullin/go-fmt/actions/workflows/tests.yml/badge.svg)](https://github.com/oullin/go-fmt/actions/workflows/tests.yml)
 [![Release](https://github.com/oullin/go-fmt/actions/workflows/release.yml/badge.svg)](https://github.com/oullin/go-fmt/actions/workflows/release.yml)
@@ -20,7 +20,7 @@
 - Runs `go vet ./...` automatically when the current working directory is inside a Go module or workspace
 - Works as a local CLI or a reusable Docker Compose service
 - Supports `text`, `json`, and `agent` output modes
-- Can also be embedded from the Go engine in `semantic/engine`
+- Can also be embedded from the Go engine in `packages/semantic/engine`
 
 ## Quick Start
 
@@ -40,7 +40,7 @@ This is the recommended integration path. It keeps the command short, the contai
 ### Local install
 
 ```bash
-go install github.com/oullin/go-fmt/semantic/cmd/fmt@latest
+go install github.com/oullin/go-fmt/packages/orchestrator/cmd/fmt@latest
 
 fmt version
 fmt check .
@@ -60,7 +60,7 @@ export PATH="$(go env GOPATH)/bin:$PATH"
 Requires Go 1.25 or newer.
 
 ```bash
-go install github.com/oullin/go-fmt/semantic/cmd/fmt@latest
+go install github.com/oullin/go-fmt/packages/orchestrator/cmd/fmt@latest
 fmt version
 ```
 
@@ -70,7 +70,7 @@ Run `make help` first to see the available repository tasks and override variabl
 
 ```bash
 make build
-./bin/go-fmt version
+./storage/bin/go-fmt version
 ```
 
 To install from the local source tree:
@@ -85,8 +85,8 @@ fmt version
 No install is required when working inside this repository:
 
 ```bash
-go -C semantic run ./cmd/fmt check .
-go -C semantic run ./cmd/fmt format .
+./scripts/with-storage-env.sh go -C packages/orchestrator run ./cmd/fmt check .
+./scripts/with-storage-env.sh go -C packages/orchestrator run ./cmd/fmt format .
 ```
 
 ### One-off Docker run
@@ -136,13 +136,13 @@ go-fmt check --format json .
 go-fmt check --format agent .
 
 # check a single file
-go-fmt check ./semantic/rules/spacing/spacing.go
+go-fmt check ./packages/semantic/rules/spacing/spacing.go
 
 # check a host path mounted by the consumer Compose file
 go-fmt check --host-path /absolute/host/project/pkg/api
 ```
 
-The stand-alone CLI formats Go source only. Repository-local `make format` also runs Oxc formatting for supported non-Go files through the `tooling` workspace.
+The stand-alone CLI formats Go source only. Repository-local `make format` also runs Oxc formatting for supported non-Go files through the `support` workspace.
 
 ## Docker
 
@@ -158,9 +158,13 @@ services:
         image: ghcr.io/oullin/go-fmt:latest
         working_dir: /work
         volumes:
-            - .:/work
+            - ${PWD}:/work
         environment:
             HOST_PROJECT_PATH: ${PWD}
+            GOCACHE: /work/storage/.cache/go-build
+            GOPATH: /work/storage/.cache/gopath
+            GOMODCACHE: /work/storage/.cache/gopath/pkg/mod
+            TURBO_CACHE_DIR: /work/storage/.cache/turbo
         command: ['help']
 ```
 
@@ -182,6 +186,7 @@ docker compose -f go-fmt.compose.yaml run --rm go-fmt format .
 - The command stays short once the file is in the project
 - The image tag and mount setup are reusable across a team
 - `HOST_PROJECT_PATH` enables `--host-path` for mounted subtrees
+- Repo-managed caches stay under `storage/.cache`
 - The same setup works well in local dev and CI
 
 ### Existing project-local Compose files
@@ -230,6 +235,8 @@ All fields are optional:
 rules:
     spacing:
         enabled: true
+
+correctness:
     vet:
         enabled: true
 
@@ -249,15 +256,15 @@ not_name:
     - '*.pb.go'
 ```
 
-| Field                   | Type | Default                          | Description                                 |
-| ----------------------- | ---- | -------------------------------- | ------------------------------------------- |
-| `rules.spacing.enabled` | bool | `true`                           | Enable or disable the spacing rule          |
-| `rules.vet.enabled`     | bool | `true`                           | Run or skip automatic `go vet ./...`        |
-| `formatters.gofmt`      | bool | `true`                           | Run `gofmt` after semantic rules            |
-| `formatters.goimports`  | bool | `true`                           | Run `goimports` after `gofmt`               |
-| `exclude`               | list | `.git`, `node_modules`, `vendor` | Directory names to skip during tree walking |
-| `not_path`              | list | Empty                            | Substring matches against full file paths   |
-| `not_name`              | list | Empty                            | Glob patterns matched against file names    |
+| Field                     | Type | Default                          | Description                                 |
+| ------------------------- | ---- | -------------------------------- | ------------------------------------------- |
+| `rules.spacing.enabled`   | bool | `true`                           | Enable or disable the spacing rule          |
+| `correctness.vet.enabled` | bool | `true`                           | Run or skip automatic `go vet ./...`        |
+| `formatters.gofmt`        | bool | `true`                           | Run `gofmt` after semantic rules            |
+| `formatters.goimports`    | bool | `true`                           | Run `goimports` after `gofmt`               |
+| `exclude`                 | list | `.git`, `node_modules`, `vendor` | Directory names to skip during tree walking |
+| `not_path`                | list | Empty                            | Substring matches against full file paths   |
+| `not_name`                | list | Empty                            | Glob patterns matched against file names    |
 
 ## Spacing Rule
 
@@ -457,7 +464,7 @@ Human-readable output for local runs:
 
 ### JSON
 
-Structured output for scripts and tooling. The CLI emits a single JSON object; it is laid out below for readability:
+Structured output for scripts and automation. The CLI emits a single JSON object; it is laid out below for readability:
 
 ```json
 {
@@ -552,7 +559,7 @@ Start with `make help` to see the available repository tasks and override variab
 ```bash
 make help
 pnpm turbo run check --filter=semantic
-pnpm turbo run check --filter=tooling
+pnpm turbo run check --filter=support
 make format
 make build
 make release
@@ -572,7 +579,8 @@ make clean
 | `ARGS`              | `.`                                                 | Files or directories to target        |
 | `VERSION`           | `git describe ...` or `dev`                         | Build version injected into binaries  |
 | `CGO_ENABLED`       | `0`                                                 | CGO setting for build and release     |
-| `DIST_DIR`          | `dist`                                              | Output directory for release binaries |
+| `BUILD_DIR`         | `storage/bin`                                       | Output directory for local binaries   |
+| `DIST_DIR`          | `storage/dist`                                      | Output directory for release binaries |
 | `RELEASE_PLATFORMS` | `darwin/amd64 darwin/arm64 linux/amd64 linux/arm64` | Platforms built by `make release`     |
 
 ### Examples
@@ -580,8 +588,10 @@ make clean
 ```bash
 make format ARGS=README.md
 make fmt-source
-make release DIST_DIR=builds
+make release DIST_DIR=storage/builds
 ```
+
+Repository-managed caches and generated binaries are expected under `storage/`, with caches rooted at `storage/.cache`.
 
 ### Release pipeline
 
@@ -601,12 +611,10 @@ The release workflow:
 ## Package Layout
 
 ```text
-semantic/cmd/fmt/          Stand-alone Go CLI entrypoint
-semantic/config/           YAML config loading with defaults
-semantic/engine/           Rule orchestration, file collection, formatter pipeline, reporting
-semantic/rules/            Rule interface contract
-semantic/rules/spacing/    AST-based spacing rule
-tooling/                   Oxc-based formatting for supported non-Go file types
+packages/orchestrator/     Stand-alone Go CLI entrypoint, config loading, report rendering
+packages/correctness/      Correctness planner and automatic go vet execution
+packages/semantic/         Semantic planning, engine, rules, and formatters
+packages/support/          Oxc-based formatting for supported non-Go file types
 ```
 
 ### Formatting pipeline

@@ -1,4 +1,4 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-gofmt -w semantic
+gofmt -w packages

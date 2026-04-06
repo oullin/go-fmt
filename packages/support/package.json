@@ -1,0 +1,11 @@
+{
+	"name": "support",
+	"private": true,
+	"scripts": {
+		"check": "cd ../.. && git ls-files --cached --others --exclude-standard -z | xargs -0 packages/support/node_modules/.bin/oxfmt --check --no-error-on-unmatched-pattern",
+		"format": "cd ../.. && git ls-files --cached --others --exclude-standard -z | xargs -0 packages/support/node_modules/.bin/oxfmt --write --no-error-on-unmatched-pattern"
+	},
+	"devDependencies": {
+		"oxfmt": "0.41.0"
+	}
+}

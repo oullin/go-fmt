@@ -23,7 +23,9 @@ jobs:
             matrix:
                 workspace:
                     - semantic
-                    - tooling
+                    - correctness
+                    - orchestrator
+                    - support
 
         steps:
             - uses: actions/checkout@v6
@@ -40,17 +42,19 @@ jobs:
                   version: 10.33.0
 
             - uses: actions/setup-go@v6
-              if: matrix.workspace == 'semantic'
+              if: matrix.workspace != 'support'
               name: Install Go
               with:
-                  go-version-file: semantic/go.mod
-                  cache-dependency-path: semantic/go.sum
+                  go-version-file: packages/orchestrator/go.mod
+                  cache-dependency-path: |
+                      packages/semantic/go.sum
+                      packages/orchestrator/go.sum
 
             - name: Install workspace dependencies
               run: pnpm install --frozen-lockfile
 
             - name: Check ${{ matrix.workspace }}
-              run: pnpm turbo run check --filter=${{ matrix.workspace }}
+              run: ./scripts/with-storage-env.sh pnpm turbo run check --cache-dir=storage/.cache/turbo --filter=${{ matrix.workspace }}
 
     test:
         needs: check
@@ -63,17 +67,25 @@ jobs:
             - uses: actions/setup-go@v6
               name: Install Go
               with:
-                  go-version-file: semantic/go.mod
-                  cache-dependency-path: semantic/go.sum
+                  go-version-file: packages/orchestrator/go.mod
+                  cache-dependency-path: |
+                      packages/semantic/go.sum
+                      packages/orchestrator/go.sum
 
-            - name: Go - Run all tests with the race detector and coverage
-              run: go -C semantic test ./... -race -coverprofile=coverage.out -covermode=atomic -v
+            - name: Go - Run semantic tests with race detector and coverage
+              run: ./scripts/with-storage-env.sh go -C packages/semantic test ./... -race -coverprofile=coverage.out -covermode=atomic -v
+
+            - name: Go - Run correctness tests with race detector
+              run: ./scripts/with-storage-env.sh go -C packages/correctness test ./... -race -v
+
+            - name: Go - Run orchestrator tests with race detector
+              run: ./scripts/with-storage-env.sh go -C packages/orchestrator test ./... -race -v
 
             - uses: actions/upload-artifact@v4
               name: Upload coverage artifact
               with:
                   name: semantic-coverage
-                  path: semantic/coverage.out
+                  path: packages/semantic/coverage.out
                   if-no-files-found: error
 
     coverage:
@@ -85,11 +97,11 @@ jobs:
               name: Download coverage artifact
               with:
                   name: semantic-coverage
-                  path: semantic
+                  path: packages/semantic
 
             - uses: codecov/codecov-action@v5
               name: Upload coverage to Codecov
               with:
                   token: ${{ secrets.CODECOV_TOKEN }}
-                  files: semantic/coverage.out
+                  files: packages/semantic/coverage.out
                   fail_ci_if_error: false

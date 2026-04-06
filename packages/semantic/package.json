@@ -1,0 +1,10 @@
+{
+	"name": "semantic",
+	"private": true,
+	"scripts": {
+		"check": "../../scripts/with-storage-env.sh go test ./...",
+		"fmt-source": "gofmt -w .",
+		"test": "../../scripts/with-storage-env.sh go test ./... -v",
+		"vet": "../../scripts/with-storage-env.sh go vet ./..."
+	}
+}

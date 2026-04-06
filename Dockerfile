@@ -6,13 +6,20 @@ ARG VERSION=dev
 
 WORKDIR /src
 
-COPY semantic/go.mod semantic/go.sum /src/semantic/
-RUN go -C /src/semantic mod download
+COPY go.work /src/go.work
+COPY packages/semantic/go.mod packages/semantic/go.sum /src/packages/semantic/
+COPY packages/orchestrator/go.mod packages/orchestrator/go.sum /src/packages/orchestrator/
+COPY packages/correctness/go.mod /src/packages/correctness/
+
+RUN go -C /src/packages/semantic mod download
+RUN go -C /src/packages/orchestrator mod download
 
 COPY . .
 
+RUN bash -lc 'source /src/scripts/env.sh && assert_no_legacy_artifacts'
+
 RUN CGO_ENABLED=0 GOOS=${TARGETOS} GOARCH=${TARGETARCH} \
-	go -C /src/semantic build -trimpath -ldflags="-s -w -X main.version=${VERSION}" -o /out/go-fmt ./cmd/fmt
+	go -C /src/packages/orchestrator build -trimpath -ldflags="-s -w -X main.version=${VERSION}" -o /out/go-fmt ./cmd/fmt
 
 RUN CGO_ENABLED=0 GOOS=${TARGETOS} GOARCH=${TARGETARCH} \
 	go build -trimpath -ldflags="-s -w" -o /out/gofmt cmd/gofmt
@@ -30,7 +37,11 @@ RUN apk add --no-cache git
 WORKDIR /work
 
 COPY --from=gosdk /usr/local/go /usr/local/go
-ENV PATH="/usr/local/go/bin:${PATH}"
+ENV PATH="/usr/local/go/bin:${PATH}" \
+	GOCACHE="/work/storage/.cache/go-build" \
+	GOPATH="/work/storage/.cache/gopath" \
+	GOMODCACHE="/work/storage/.cache/gopath/pkg/mod" \
+	TURBO_CACHE_DIR="/work/storage/.cache/turbo"
 
 COPY --from=builder /out/go-fmt /usr/local/bin/go-fmt
 COPY --from=builder /out/gofmt /usr/local/bin/gofmt

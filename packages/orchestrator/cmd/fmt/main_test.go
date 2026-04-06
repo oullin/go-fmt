@@ -7,11 +7,12 @@ import (
 	"testing"
 
 	"github.com/oullin/go-fmt/packages/orchestrator/cli"
+	"github.com/oullin/go-fmt/packages/testutil"
 )
 
 func TestRunCheckFailsOnStyleChanges(t *testing.T) {
 	dir := t.TempDir()
-	mustWrite(t, filepath.Join(dir, "sample.go"), `package sample
+	testutil.WriteGoFile(t, filepath.Join(dir, "sample.go"), `package sample
 
 func run() {
 	if true {
@@ -43,7 +44,7 @@ func run() {
 func TestRunFormatWritesChanges(t *testing.T) {
 	dir := t.TempDir()
 	path := filepath.Join(dir, "sample.go")
-	mustWrite(t, path, `package sample
+	testutil.WriteGoFile(t, path, `package sample
 
 func run() {
 	defer println("done")
@@ -79,7 +80,7 @@ func run() {
 func TestRunFormatSkipsSingleLineFuncLiteralSpacingViolations(t *testing.T) {
 	dir := t.TempDir()
 	path := filepath.Join(dir, "sample.go")
-	mustWrite(t, path, `package sample
+	testutil.WriteGoFile(t, path, `package sample
 
 type config struct {
 	SecureCookie bool
@@ -119,7 +120,7 @@ func run() config {
 
 func TestRunAgentOutput(t *testing.T) {
 	dir := t.TempDir()
-	mustWrite(t, filepath.Join(dir, "sample.go"), `package sample
+	testutil.WriteGoFile(t, filepath.Join(dir, "sample.go"), `package sample
 
 func run() {
 	if true {
@@ -147,7 +148,7 @@ func run() {
 func TestRunCheckWithHostPath(t *testing.T) {
 	dir := t.TempDir()
 	path := filepath.Join(dir, "sample.go")
-	mustWrite(t, path, `package sample
+	testutil.WriteGoFile(t, path, `package sample
 
 func run() {
 	if true {
@@ -176,7 +177,7 @@ func run() {
 func TestRunFormatWithHostPath(t *testing.T) {
 	dir := t.TempDir()
 	path := filepath.Join(dir, "sample.go")
-	mustWrite(t, path, `package sample
+	testutil.WriteGoFile(t, path, `package sample
 
 func run() {
 	defer println("done")
@@ -213,7 +214,7 @@ func run() {
 func TestRunWithHostPathRequiresEnv(t *testing.T) {
 	dir := t.TempDir()
 	path := filepath.Join(dir, "sample.go")
-	mustWrite(t, path, "package sample\n")
+	testutil.WriteGoFile(t, path, "package sample\n")
 
 	exitCode, _, stderr := runCLI(t, dir, "check", "--host-path", path)
 
@@ -229,7 +230,7 @@ func TestRunWithHostPathRequiresEnv(t *testing.T) {
 func TestRunWithHostPathRejectsPositionalPaths(t *testing.T) {
 	dir := t.TempDir()
 	path := filepath.Join(dir, "sample.go")
-	mustWrite(t, path, "package sample\n")
+	testutil.WriteGoFile(t, path, "package sample\n")
 	t.Setenv(cli.HostRootEnv, dir)
 
 	exitCode, _, stderr := runCLI(t, dir, "check", "--host-path", path, dir)
@@ -307,7 +308,7 @@ func TestVersion(t *testing.T) {
 
 func TestRunCheckRunsGoVetInModule(t *testing.T) {
 	dir := writeTempModule(t, "example.com/sample")
-	mustWrite(t, filepath.Join(dir, "sample.go"), `package sample
+	testutil.WriteGoFile(t, filepath.Join(dir, "sample.go"), `package sample
 
 import "fmt"
 
@@ -338,7 +339,7 @@ func run() {
 func TestRunFormatRunsGoVetAfterWritingChanges(t *testing.T) {
 	dir := writeTempModule(t, "example.com/sample")
 	path := filepath.Join(dir, "sample.go")
-	mustWrite(t, path, `package sample
+	testutil.WriteGoFile(t, path, `package sample
 
 func run() {
 	defer println("done")
@@ -378,7 +379,7 @@ func run() {
 func TestRunFormatReportsGoVetFailureAfterWritingChanges(t *testing.T) {
 	dir := writeTempModule(t, "example.com/sample")
 	path := filepath.Join(dir, "sample.go")
-	mustWrite(t, path, `package sample
+	testutil.WriteGoFile(t, path, `package sample
 
 import "fmt"
 
@@ -415,7 +416,7 @@ func run() {
 
 func TestRunOutsideModuleSkipsGoVet(t *testing.T) {
 	dir := t.TempDir()
-	mustWrite(t, filepath.Join(dir, "sample.go"), `package sample
+	testutil.WriteGoFile(t, filepath.Join(dir, "sample.go"), `package sample
 
 func run() {
 	defer println("done")
@@ -441,7 +442,7 @@ func run() {
 func TestRunWithHostPathRunsGoVetInModule(t *testing.T) {
 	dir := writeTempModule(t, "example.com/sample")
 	path := filepath.Join(dir, "sample.go")
-	mustWrite(t, path, `package sample
+	testutil.WriteGoFile(t, path, `package sample
 
 import "fmt"
 
@@ -469,8 +470,8 @@ func run() {
 func TestRunCheckWithCorrectnessDisabledSkipsGoVet(t *testing.T) {
 	dir := writeTempModule(t, "example.com/sample")
 	configPath := filepath.Join(dir, "config.yml")
-	mustWrite(t, configPath, "correctness:\n  vet:\n    enabled: false\n")
-	mustWrite(t, filepath.Join(dir, "sample.go"), `package sample
+	testutil.WriteFile(t, configPath, "correctness:\n  vet:\n    enabled: false\n")
+	testutil.WriteGoFile(t, filepath.Join(dir, "sample.go"), `package sample
 
 import "fmt"
 
@@ -519,19 +520,11 @@ func runCLI(t *testing.T, workdir string, args ...string) (int, string, string) 
 	return exitCode, stdout.String(), stderr.String()
 }
 
-func mustWrite(t *testing.T, path string, content string) {
-	t.Helper()
-
-	if err := os.WriteFile(path, []byte(content), 0o644); err != nil {
-		t.Fatalf("write file: %v", err)
-	}
-}
-
 func writeTempModule(t *testing.T, modulePath string) string {
 	t.Helper()
 
 	dir := t.TempDir()
-	mustWrite(t, filepath.Join(dir, "go.mod"), "module "+modulePath+"\n\ngo 1.25.0\n")
+	testutil.WriteGoMod(t, dir, modulePath)
 
 	return dir
 }

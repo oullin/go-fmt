@@ -46,57 +46,43 @@ func RenderAgent(w io.Writer, cwd string, report Combined) error {
 	encoder := json.NewEncoder(w)
 	encoder.SetIndent("", "  ")
 
-	return encoder.Encode(toAgentReport(cwd, report))
+	return encoder.Encode(toAgentReport(projectReport(cwd, report)))
 }
 
-func toAgentReport(cwd string, report Combined) agentReport {
+func toAgentReport(report projectedReport) agentReport {
 	return agentReport{
-		Result:      combinedResult(report),
-		Semantic:    toSemanticAgentReport(cwd, report),
-		Correctness: toCorrectnessAgentReport(cwd, report),
+		Result:      report.Result,
+		Semantic:    toSemanticAgentReport(report.Semantic),
+		Correctness: toCorrectnessAgentReport(report.Correctness),
 	}
 }
 
-func toSemanticAgentReport(cwd string, report Combined) semanticAgentReport {
+func toSemanticAgentReport(report projectedSemanticReport) semanticAgentReport {
 	out := semanticAgentReport{
-		Result: report.Semantic.Result,
+		Result: report.Result,
 		Summary: agentSummary{
-			Files:      report.Semantic.Files,
-			Changed:    report.Semantic.Changed,
-			Violations: report.Semantic.ViolationCount(),
+			Files:      report.Files,
+			Changed:    report.Changed,
+			Violations: report.Violations,
 		},
 	}
 
-	for _, result := range report.Semantic.Errors {
-		out.Errors = append(out.Errors, jsonErrorMessage{
-			File:    relativePath(cwd, result.File),
-			Message: result.Message,
-		})
-	}
+	out.Errors = append(out.Errors, report.Errors...)
 
-	for _, result := range report.Semantic.Results {
-		rel := relativePath(cwd, result.File)
-
+	for _, result := range report.Results {
 		if result.Changed {
 			out.Changed = append(out.Changed, agentChange{
-				File:  rel,
+				File:  result.File,
 				Steps: result.Applied,
 			})
 		}
 
 		for _, violation := range result.Violations {
 			out.Violations = append(out.Violations, agentViolation{
-				File:    rel,
+				File:    result.File,
 				Rule:    violation.Rule,
 				Line:    violation.Line,
 				Message: violation.Message,
-			})
-		}
-
-		if result.Error != "" {
-			out.Errors = append(out.Errors, jsonErrorMessage{
-				File:    rel,
-				Message: result.Error,
 			})
 		}
 	}
@@ -104,17 +90,9 @@ func toSemanticAgentReport(cwd string, report Combined) semanticAgentReport {
 	return out
 }
 
-func toCorrectnessAgentReport(cwd string, report Combined) correctnessAgentReport {
-	out := correctnessAgentReport{
-		Status: correctnessStatus(report.Correctness),
+func toCorrectnessAgentReport(report projectedCorrectnessReport) correctnessAgentReport {
+	return correctnessAgentReport{
+		Status: report.Status,
+		Errors: report.Errors,
 	}
-
-	for _, result := range report.Correctness.Errors {
-		out.Errors = append(out.Errors, jsonErrorMessage{
-			File:    relativePath(cwd, result.File),
-			Message: result.Message,
-		})
-	}
-
-	return out
 }

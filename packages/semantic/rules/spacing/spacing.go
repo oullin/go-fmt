@@ -68,7 +68,7 @@ func analyse(filename string, src []byte) ([]rules.Violation, []byte, error) {
 				continue
 			}
 
-			if message, ok := statementGapRule(current, next, aliases); ok {
+			if message, ok := statementGapRule(current, next, aliases, fset); ok {
 				if nextLine < endLine+2 {
 					violations = append(violations, rules.Violation{
 						Rule:    "spacing",
@@ -148,20 +148,20 @@ func inspectStmtLists(file *ast.File, visit func([]ast.Stmt)) {
 	})
 }
 
-func statementGapRule(current ast.Stmt, next ast.Stmt, aliases importAliases) (string, bool) {
+func statementGapRule(current ast.Stmt, next ast.Stmt, aliases importAliases, fset *token.FileSet) (string, bool) {
 	if label, ok := requiresLeadingBlankLine(next, aliases); ok {
 		return fmt.Sprintf("missing blank line before %s", label), true
 	}
 
-	if label, ok := requiresTrailingBlankLine(current, next, aliases); ok {
+	if label, ok := requiresTrailingBlankLine(current, next, aliases, fset); ok {
 		return fmt.Sprintf("missing blank line after %s", label), true
 	}
 
 	return "", false
 }
 
-func requiresTrailingBlankLine(current ast.Stmt, next ast.Stmt, aliases importAliases) (string, bool) {
-	if isAnonymousFuncAssignmentStmt(current) {
+func requiresTrailingBlankLine(current ast.Stmt, next ast.Stmt, aliases importAliases, fset *token.FileSet) (string, bool) {
+	if isAnonymousFuncAssignmentStmt(current, fset) {
 		return "anonymous function assignment", true
 	}
 
@@ -336,10 +336,10 @@ func isShortAssignStmt(stmt ast.Stmt) bool {
 	return ok && assign.Tok == token.DEFINE
 }
 
-func isAnonymousFuncAssignmentStmt(stmt ast.Stmt) bool {
+func isAnonymousFuncAssignmentStmt(stmt ast.Stmt, fset *token.FileSet) bool {
 	switch typed := stmt.(type) {
 	case *ast.AssignStmt:
-		return hasFuncLiteralExpr(typed.Rhs)
+		return hasAnonymousFuncInitializerExpr(typed.Rhs, fset)
 	case *ast.DeclStmt:
 		genDecl, ok := typed.Decl.(*ast.GenDecl)
 
@@ -354,7 +354,7 @@ func isAnonymousFuncAssignmentStmt(stmt ast.Stmt) bool {
 				continue
 			}
 
-			if hasFuncLiteralExpr(valueSpec.Values) {
+			if hasAnonymousFuncInitializerExpr(valueSpec.Values, fset) {
 				return true
 			}
 		}
@@ -363,14 +363,37 @@ func isAnonymousFuncAssignmentStmt(stmt ast.Stmt) bool {
 	return false
 }
 
-func hasFuncLiteralExpr(exprs []ast.Expr) bool {
+func hasAnonymousFuncInitializerExpr(exprs []ast.Expr, fset *token.FileSet) bool {
 	for _, expr := range exprs {
-		if _, ok := expr.(*ast.FuncLit); ok {
-			return true
+		if !isMultiLineAnonymousFuncInitializerExpr(expr, fset) {
+			continue
+		}
+
+		return true
+	}
+
+	return false
+}
+
+func isMultiLineAnonymousFuncInitializerExpr(expr ast.Expr, fset *token.FileSet) bool {
+	switch typed := expr.(type) {
+	case *ast.FuncLit:
+		return spansMultipleLines(typed, fset)
+	case *ast.CallExpr:
+		if _, ok := typed.Fun.(*ast.FuncLit); ok {
+			return spansMultipleLines(typed, fset)
 		}
 	}
 
 	return false
+}
+
+func spansMultipleLines(node ast.Node, fset *token.FileSet) bool {
+	if node == nil || fset == nil {
+		return false
+	}
+
+	return fset.Position(node.Pos()).Line != fset.Position(node.End()).Line
 }
 
 func requiresTypeDeclSpacing(current ast.Decl, next ast.Decl) bool {

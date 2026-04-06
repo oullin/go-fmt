@@ -38,55 +38,36 @@ type jsonViolation struct {
 }
 
 func RenderJSON(w io.Writer, cwd string, report Combined) error {
-	return json.NewEncoder(w).Encode(toJSONReport(cwd, report))
+	return json.NewEncoder(w).Encode(toJSONReport(projectReport(cwd, report)))
 }
 
-func toJSONReport(cwd string, report Combined) jsonReport {
+func toJSONReport(report projectedReport) jsonReport {
 	return jsonReport{
-		Result:      combinedResult(report),
-		Semantic:    toSemanticJSONReport(cwd, report),
-		Correctness: toCorrectnessJSONReport(cwd, report),
+		Result:      report.Result,
+		Semantic:    toSemanticJSONReport(report.Semantic),
+		Correctness: toCorrectnessJSONReport(report.Correctness),
 	}
 }
 
-func toSemanticJSONReport(cwd string, report Combined) semanticJSONReport {
+func toSemanticJSONReport(report projectedSemanticReport) semanticJSONReport {
 	out := semanticJSONReport{
-		Result:  report.Semantic.Result,
-		Files:   report.Semantic.Files,
-		Changed: report.Semantic.Changed,
+		Result:  report.Result,
+		Files:   report.Files,
+		Changed: report.Changed,
 	}
 
-	for _, result := range report.Semantic.Errors {
-		out.Errors = append(out.Errors, jsonErrorMessage{
-			File:    relativePath(cwd, result.File),
-			Message: result.Message,
-		})
-	}
+	out.Errors = append(out.Errors, report.Errors...)
 
-	for _, result := range report.Semantic.Results {
-		rel := relativePath(cwd, result.File)
-
+	for _, result := range report.Results {
 		if result.Error != "" {
-			out.Errors = append(out.Errors, jsonErrorMessage{
-				File:    rel,
-				Message: result.Error,
-			})
-
 			continue
 		}
 
 		item := jsonFileResult{
-			File:    rel,
-			Applied: result.Applied,
-			Changed: result.Changed,
-		}
-
-		for _, violation := range result.Violations {
-			item.Violations = append(item.Violations, jsonViolation{
-				Rule:    violation.Rule,
-				Line:    violation.Line,
-				Message: violation.Message,
-			})
+			File:       result.File,
+			Applied:    result.Applied,
+			Changed:    result.Changed,
+			Violations: result.Violations,
 		}
 
 		if item.Changed || len(item.Violations) > 0 {
@@ -97,17 +78,9 @@ func toSemanticJSONReport(cwd string, report Combined) semanticJSONReport {
 	return out
 }
 
-func toCorrectnessJSONReport(cwd string, report Combined) correctnessJSONReport {
-	out := correctnessJSONReport{
-		Status: correctnessStatus(report.Correctness),
+func toCorrectnessJSONReport(report projectedCorrectnessReport) correctnessJSONReport {
+	return correctnessJSONReport{
+		Status: report.Status,
+		Errors: report.Errors,
 	}
-
-	for _, result := range report.Correctness.Errors {
-		out.Errors = append(out.Errors, jsonErrorMessage{
-			File:    relativePath(cwd, result.File),
-			Message: result.Message,
-		})
-	}
-
-	return out
 }

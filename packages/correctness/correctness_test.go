@@ -7,6 +7,8 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/oullin/go-fmt/packages/testutil"
 )
 
 func TestParseGoEnvValuesPreservesOrderAndEmptyLines(t *testing.T) {
@@ -59,8 +61,8 @@ func TestPlannerBuildPrefersWorkspace(t *testing.T) {
 	workspaceFile := filepath.Join(workspaceRoot, "go.work")
 	moduleFile := filepath.Join(moduleRoot, "go.mod")
 
-	mustWriteFile(t, workspaceFile)
-	mustWriteFile(t, moduleFile)
+	testutil.WriteFile(t, workspaceFile, "go 1.25.0\n")
+	testutil.WriteFile(t, moduleFile, "module example.com/test\n")
 
 	restore := stubGoEnvOutput(t, func(string, ...string) ([]byte, error) {
 		return []byte(workspaceFile + "\n" + moduleFile + "\n"), nil
@@ -87,7 +89,7 @@ func TestPlannerBuildFallsBackToModuleWhenWorkspaceUnset(t *testing.T) {
 	moduleRoot := t.TempDir()
 	moduleFile := filepath.Join(moduleRoot, "go.mod")
 
-	mustWriteFile(t, moduleFile)
+	testutil.WriteFile(t, moduleFile, "module example.com/test\n")
 
 	restore := stubGoEnvOutput(t, func(string, ...string) ([]byte, error) {
 		return []byte("\n" + moduleFile + "\n"), nil
@@ -114,9 +116,9 @@ func TestPlanExecuteRunsGoVetAcrossWorkspaceModules(t *testing.T) {
 	moduleA := filepath.Join(workspaceRoot, "module-a")
 	moduleB := filepath.Join(workspaceRoot, "module-b")
 
-	mustWriteGoFile(t, filepath.Join(moduleA, "go.mod"), "module example.com/module-a\n\ngo 1.25.0\n")
-	mustWriteGoFile(t, filepath.Join(moduleB, "go.mod"), "module example.com/module-b\n\ngo 1.25.0\n")
-	mustWriteGoFile(t, filepath.Join(moduleA, "sample.go"), `package sample
+	testutil.WriteGoMod(t, moduleA, "example.com/module-a")
+	testutil.WriteGoMod(t, moduleB, "example.com/module-b")
+	testutil.WriteGoFile(t, filepath.Join(moduleA, "sample.go"), `package sample
 
 import "fmt"
 
@@ -124,13 +126,13 @@ func run() {
 	fmt.Printf("%d", "not-a-number")
 }
 `)
-	mustWriteGoFile(t, filepath.Join(moduleB, "sample.go"), `package sample
+	testutil.WriteGoFile(t, filepath.Join(moduleB, "sample.go"), `package sample
 
 func run() {
 	println("ok")
 }
 `)
-	mustWriteGoFile(t, filepath.Join(workspaceRoot, "go.work"), `go 1.25.0
+	testutil.WriteGoWork(t, workspaceRoot, `go 1.25.0
 
 use (
 	./module-a
@@ -189,13 +191,13 @@ func TestExistingGoRootFiltersInvalidCandidates(t *testing.T) {
 	dirCandidate := filepath.Join(tempDir, "go.mod")
 	wrongName := filepath.Join(tempDir, "other.file")
 
-	mustWriteFile(t, validPath)
+	testutil.WriteFile(t, validPath, "module example.com/test\n")
 
 	if err := os.Mkdir(dirCandidate, 0o755); err != nil {
 		t.Fatalf("mkdir candidate: %v", err)
 	}
 
-	mustWriteFile(t, wrongName)
+	testutil.WriteFile(t, wrongName, "module example.com/test\n")
 
 	cases := []struct {
 		name     string
@@ -255,29 +257,5 @@ func stubGoEnvOutput(t *testing.T, fn func(string, ...string) ([]byte, error)) f
 
 	return func() {
 		goEnvOutput = previous
-	}
-}
-
-func mustWriteFile(t *testing.T, path string) {
-	t.Helper()
-
-	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
-		t.Fatalf("mkdir parent: %v", err)
-	}
-
-	if err := os.WriteFile(path, []byte("module example.com/test\n"), 0o644); err != nil {
-		t.Fatalf("write file: %v", err)
-	}
-}
-
-func mustWriteGoFile(t *testing.T, path string, content string) {
-	t.Helper()
-
-	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
-		t.Fatalf("mkdir parent: %v", err)
-	}
-
-	if err := os.WriteFile(path, []byte(content), 0o644); err != nil {
-		t.Fatalf("write file: %v", err)
 	}
 }

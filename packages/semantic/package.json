@@ -2,9 +2,9 @@
 	"name": "semantic",
 	"private": true,
 	"scripts": {
-		"check": "../../scripts/with-storage-env.sh go test ./...",
-		"fmt-source": "gofmt -w .",
-		"test": "../../scripts/with-storage-env.sh go test ./... -v",
-		"vet": "../../scripts/with-storage-env.sh go vet ./..."
+		"check": "../../scripts/go-package-task.sh check",
+		"fmt-source": "../../scripts/go-package-task.sh fmt-source",
+		"test": "../../scripts/go-package-task.sh test",
+		"vet": "../../scripts/go-package-task.sh vet"
 	}
 }

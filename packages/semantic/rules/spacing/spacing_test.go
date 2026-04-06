@@ -622,6 +622,115 @@ func run() {
 	}
 }
 
+func TestApplyFormatsBlankLineAfterShortAssignedIIFE(t *testing.T) {
+	path := writeTempGoFile(t, `package sample
+
+func run() {
+	value := func() int {
+		return 1
+	}()
+	println(value)
+}
+`)
+
+	violations, formatted, err := New().Apply(path, mustReadFile(t, path))
+
+	if err != nil {
+		t.Fatalf("apply: %v", err)
+	}
+
+	if len(violations) != 1 {
+		t.Fatalf("expected 1 violation, got %d", len(violations))
+	}
+
+	if !strings.Contains(violations[0].Message, "after anonymous function assignment") {
+		t.Fatalf("unexpected message %q", violations[0].Message)
+	}
+
+	if !strings.Contains(string(formatted), "return 1\n\t}()\n\n\tprintln(value)") {
+		t.Fatalf("expected blank line after short-assigned IIFE, got:\n%s", formatted)
+	}
+}
+
+func TestApplyFormatsBlankLineAfterVarAssignedIIFE(t *testing.T) {
+	path := writeTempGoFile(t, `package sample
+
+func run() {
+	var value = func() int {
+		return 1
+	}()
+	println(value)
+}
+`)
+
+	violations, formatted, err := New().Apply(path, mustReadFile(t, path))
+
+	if err != nil {
+		t.Fatalf("apply: %v", err)
+	}
+
+	if len(violations) != 1 {
+		t.Fatalf("expected 1 violation, got %d", len(violations))
+	}
+
+	if !strings.Contains(string(formatted), "return 1\n\t}()\n\n\tprintln(value)") {
+		t.Fatalf("expected blank line after var-assigned IIFE, got:\n%s", formatted)
+	}
+}
+
+func TestApplyKeepsExistingBlankLineAfterIIFEAssignment(t *testing.T) {
+	path := writeTempGoFile(t, `package sample
+
+func run() {
+	value := func() int {
+		return 1
+	}()
+
+	println(value)
+}
+`)
+
+	original := string(mustReadFile(t, path))
+	violations, formatted, err := New().Apply(path, []byte(original))
+
+	if err != nil {
+		t.Fatalf("apply: %v", err)
+	}
+
+	if len(violations) != 0 {
+		t.Fatalf("expected 0 violations, got %d", len(violations))
+	}
+
+	if string(formatted) != original {
+		t.Fatalf("expected unchanged output, got:\n%s", formatted)
+	}
+}
+
+func TestApplyIgnoresSingleLineIIFEAssignment(t *testing.T) {
+	path := writeTempGoFile(t, `package sample
+
+func run() {
+	value := func() int { return 1 }()
+	println(value)
+}
+`)
+
+	original := string(mustReadFile(t, path))
+	violations, formatted, err := New().Apply(path, []byte(original))
+
+	if err != nil {
+		t.Fatalf("apply: %v", err)
+	}
+
+	if len(violations) != 0 {
+		t.Fatalf("expected 0 violations, got %d", len(violations))
+	}
+
+	if string(formatted) != original {
+		t.Fatalf("expected unchanged output, got:\n%s", formatted)
+	}
+}
+
 func TestApplyIgnoresSingleLineFuncLiteralStatementBoundaries(t *testing.T) {
 	path := writeTempGoFile(t, `package sample
 
@@ -657,6 +766,37 @@ func run() config {
 	return config{
 		SecureCookie: func() bool { value := true; return value }(),
 	}
+}
+`)
+
+	original := string(mustReadFile(t, path))
+	violations, formatted, err := New().Apply(path, []byte(original))
+
+	if err != nil {
+		t.Fatalf("apply: %v", err)
+	}
+
+	if len(violations) != 0 {
+		t.Fatalf("expected 0 violations, got %d", len(violations))
+	}
+
+	if string(formatted) != original {
+		t.Fatalf("expected unchanged output, got:\n%s", formatted)
+	}
+}
+
+func TestApplyIgnoresNestedFuncLiteralInNonIIFEAssignment(t *testing.T) {
+	path := writeTempGoFile(t, `package sample
+
+func run() {
+	value := wrap(func() int {
+		return 1
+	})
+	println(value())
+}
+
+func wrap(fn func() int) func() int {
+	return fn
 }
 `)
 

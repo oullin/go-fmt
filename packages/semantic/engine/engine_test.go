@@ -11,6 +11,7 @@ import (
 	"github.com/oullin/go-fmt/packages/semantic/formatter"
 	"github.com/oullin/go-fmt/packages/semantic/rules"
 	"github.com/oullin/go-fmt/packages/semantic/rules/spacing"
+	"github.com/oullin/go-fmt/packages/testutil"
 )
 
 func defaultRules() []rules.Rule {
@@ -23,11 +24,11 @@ func defaultFormatters() []formatter.Formatter {
 
 func TestCollectGoFilesSkipsHiddenVendorAndGenerated(t *testing.T) {
 	root := t.TempDir()
-	mustWrite(t, filepath.Join(root, "root.go"), "package sample\n")
-	mustWrite(t, filepath.Join(root, "pkg", "nested.go"), "package sample\n")
-	mustWrite(t, filepath.Join(root, "vendor", "skip.go"), "package sample\n")
-	mustWrite(t, filepath.Join(root, ".hidden", "skip.go"), "package sample\n")
-	mustWrite(t, filepath.Join(root, "generated.gen.go"), "package sample\n")
+	testutil.WriteGoFile(t, filepath.Join(root, "root.go"), "package sample\n")
+	testutil.WriteGoFile(t, filepath.Join(root, "pkg", "nested.go"), "package sample\n")
+	testutil.WriteGoFile(t, filepath.Join(root, "vendor", "skip.go"), "package sample\n")
+	testutil.WriteGoFile(t, filepath.Join(root, ".hidden", "skip.go"), "package sample\n")
+	testutil.WriteGoFile(t, filepath.Join(root, "generated.gen.go"), "package sample\n")
 
 	files, err := engine.CollectGoFiles([]string{root}, config.Default())
 
@@ -43,7 +44,7 @@ func TestCollectGoFilesSkipsHiddenVendorAndGenerated(t *testing.T) {
 func TestCheckReportsStyleChangesWithoutWriting(t *testing.T) {
 	root := t.TempDir()
 	path := filepath.Join(root, "sample.go")
-	mustWrite(t, path, `package sample
+	testutil.WriteGoFile(t, path, `package sample
 
 func run() {
 	if true {
@@ -81,7 +82,7 @@ func run() {
 func TestFormatWritesSpacingChanges(t *testing.T) {
 	root := t.TempDir()
 	path := filepath.Join(root, "sample.go")
-	mustWrite(t, path, `package sample
+	testutil.WriteGoFile(t, path, `package sample
 
 func run() {
 	defer println("done")
@@ -113,7 +114,7 @@ func run() {
 func TestFormatSkipsSingleLineFuncLiteralSpacingViolations(t *testing.T) {
 	root := t.TempDir()
 	path := filepath.Join(root, "sample.go")
-	mustWrite(t, path, `package sample
+	testutil.WriteGoFile(t, path, `package sample
 
 type config struct {
 	SecureCookie bool
@@ -142,17 +143,5 @@ func run() config {
 
 	if report.ViolationCount() != 0 {
 		t.Fatalf("expected 0 violations, got %d", report.ViolationCount())
-	}
-}
-
-func mustWrite(t *testing.T, path string, content string) {
-	t.Helper()
-
-	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
-		t.Fatalf("mkdir: %v", err)
-	}
-
-	if err := os.WriteFile(path, []byte(content), 0o644); err != nil {
-		t.Fatalf("write file: %v", err)
 	}
 }

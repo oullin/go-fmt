@@ -37,24 +37,21 @@ func TestParseGoEnvValuesPreservesOrderAndEmptyLines(t *testing.T) {
 	})
 }
 
-func TestPlannerBuildSkipsWhenDisabled(t *testing.T) {
-	plan, err := (Planner{}).Build(BuildOptions{
-		WorkRoot: t.TempDir(),
-		Config: Config{
-			Vet: Toggle{Enabled: false},
-		},
-	})
-
-	if err != nil {
-		t.Fatalf("build plan: %v", err)
-	}
-
-	if plan.Enabled {
-		t.Fatalf("expected plan to be disabled: %#v", plan)
+func TestDefaultEnablesVet(t *testing.T) {
+	if !Default().Enabled {
+		t.Fatal("expected default vet config to be enabled")
 	}
 }
 
-func TestPlannerBuildPrefersWorkspace(t *testing.T) {
+func TestRunSkipsWhenDisabled(t *testing.T) {
+	report := Run(t.TempDir(), Config{Enabled: false})
+
+	if report.Root != "" || report.ErrorCount() != 0 {
+		t.Fatalf("expected empty report, got %#v", report)
+	}
+}
+
+func TestRunPrefersWorkspace(t *testing.T) {
 	workRoot := t.TempDir()
 	workspaceRoot := t.TempDir()
 	moduleRoot := t.TempDir()
@@ -70,21 +67,20 @@ func TestPlannerBuildPrefersWorkspace(t *testing.T) {
 
 	defer restore()
 
-	plan, err := (Planner{}).Build(BuildOptions{
-		WorkRoot: workRoot,
-		Config:   DefaultConfig(),
+	restoreModules := stubGoListModulesOutput(t, func(string) ([]byte, error) {
+		return nil, nil
 	})
 
-	if err != nil {
-		t.Fatalf("build plan: %v", err)
-	}
+	defer restoreModules()
 
-	if !plan.Enabled || plan.Root != workspaceRoot {
-		t.Fatalf("unexpected plan: %#v", plan)
+	report := Run(workRoot, Default())
+
+	if report.Root != workspaceRoot {
+		t.Fatalf("unexpected report: %#v", report)
 	}
 }
 
-func TestPlannerBuildFallsBackToModuleWhenWorkspaceUnset(t *testing.T) {
+func TestRunFallsBackToModuleWhenWorkspaceUnset(t *testing.T) {
 	workRoot := t.TempDir()
 	moduleRoot := t.TempDir()
 	moduleFile := filepath.Join(moduleRoot, "go.mod")
@@ -97,21 +93,20 @@ func TestPlannerBuildFallsBackToModuleWhenWorkspaceUnset(t *testing.T) {
 
 	defer restore()
 
-	plan, err := (Planner{}).Build(BuildOptions{
-		WorkRoot: workRoot,
-		Config:   DefaultConfig(),
+	restoreModules := stubGoListModulesOutput(t, func(string) ([]byte, error) {
+		return nil, nil
 	})
 
-	if err != nil {
-		t.Fatalf("build plan: %v", err)
-	}
+	defer restoreModules()
 
-	if !plan.Enabled || plan.Root != moduleRoot {
-		t.Fatalf("unexpected plan: %#v", plan)
+	report := Run(workRoot, Default())
+
+	if report.Root != moduleRoot {
+		t.Fatalf("unexpected report: %#v", report)
 	}
 }
 
-func TestPlanExecuteRunsGoVetAcrossWorkspaceModules(t *testing.T) {
+func TestRunRunsGoVetAcrossWorkspaceModules(t *testing.T) {
 	workspaceRoot := t.TempDir()
 	moduleA := filepath.Join(workspaceRoot, "module-a")
 	moduleB := filepath.Join(workspaceRoot, "module-b")
@@ -140,7 +135,7 @@ use (
 )
 `)
 
-	report := (Plan{Enabled: true, Root: workspaceRoot}).Execute()
+	report := Run(workspaceRoot, Default())
 
 	if report.ErrorCount() != 1 {
 		t.Fatalf("expected one vet error, got %#v", report)
@@ -155,29 +150,26 @@ use (
 	}
 }
 
-func TestPlannerBuildPropagatesCombinedLookupError(t *testing.T) {
+func TestRunReportsGoEnvLookupError(t *testing.T) {
 	restore := stubGoEnvOutput(t, func(string, ...string) ([]byte, error) {
 		return nil, &exec.ExitError{Stderr: []byte("go env failed\n")}
 	})
 
 	defer restore()
 
-	_, err := (Planner{}).Build(BuildOptions{
-		WorkRoot: t.TempDir(),
-		Config:   DefaultConfig(),
-	})
+	report := Run(t.TempDir(), Default())
 
-	if err == nil {
-		t.Fatal("expected error")
+	if report.ErrorCount() != 1 {
+		t.Fatalf("expected one error, got %#v", report)
 	}
 
-	if !strings.Contains(err.Error(), "resolve go GOWORK GOMOD: go env failed") {
-		t.Fatalf("unexpected error: %v", err)
+	if !strings.Contains(report.Errors[0].Message, "resolve go GOWORK GOMOD: go env failed") {
+		t.Fatalf("unexpected error: %#v", report)
 	}
 }
 
-func TestPlanExecuteSkipsOutsideModule(t *testing.T) {
-	report := (Plan{Enabled: true}).Execute()
+func TestRunSkipsOutsideModule(t *testing.T) {
+	report := Run(t.TempDir(), Default())
 
 	if report.ErrorCount() != 0 {
 		t.Fatalf("expected empty report: %#v", report)
@@ -257,5 +249,16 @@ func stubGoEnvOutput(t *testing.T, fn func(string, ...string) ([]byte, error)) f
 
 	return func() {
 		goEnvOutput = previous
+	}
+}
+
+func stubGoListModulesOutput(t *testing.T, fn func(string) ([]byte, error)) func() {
+	t.Helper()
+
+	previous := goListModulesOutput
+	goListModulesOutput = fn
+
+	return func() {
+		goListModulesOutput = previous
 	}
 }

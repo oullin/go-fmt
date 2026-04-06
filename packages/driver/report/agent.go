@@ -42,6 +42,7 @@ type agentViolation struct {
 	Message string `json:"message"`
 }
 
+// RenderAgent writes the agent-oriented JSON report representation.
 func RenderAgent(w io.Writer, cwd string, report Combined) error {
 	encoder := json.NewEncoder(w)
 	encoder.SetIndent("", "  ")

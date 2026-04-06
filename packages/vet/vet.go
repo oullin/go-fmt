@@ -10,40 +10,26 @@ import (
 	"strings"
 )
 
-type Toggle struct {
-	Enabled bool
-}
-
+// Config controls whether automatic go vet checks run.
 type Config struct {
-	Vet Toggle
-}
-
-type Planner struct{}
-
-type BuildOptions struct {
-	WorkRoot string
-	Config   Config
-}
-
-type Plan struct {
 	Enabled bool
-	Root    string
 }
 
+// ErrorResult describes a go vet failure for a module or workspace.
 type ErrorResult struct {
 	File    string `json:"file,omitempty"`
 	Message string `json:"message"`
 }
 
+// Report summarizes the automatic go vet run.
 type Report struct {
 	Root   string        `json:"root,omitempty"`
 	Errors []ErrorResult `json:"errors,omitempty"`
 }
 
-func DefaultConfig() Config {
-	return Config{
-		Vet: Toggle{Enabled: true},
-	}
+// Default returns the default vet configuration.
+func Default() Config {
+	return Config{Enabled: true}
 }
 
 var goEnvOutput = func(workRoot string, keys ...string) ([]byte, error) {
@@ -61,35 +47,34 @@ var goListModulesOutput = func(root string) ([]byte, error) {
 	return cmd.Output()
 }
 
-func (Planner) Build(options BuildOptions) (Plan, error) {
-	if !options.Config.Vet.Enabled {
-		return Plan{}, nil
-	}
-
-	root, err := discoverVetRoot(options.WorkRoot)
-
-	if err != nil {
-		return Plan{}, err
-	}
-
-	return Plan{
-		Enabled: true,
-		Root:    root,
-	}, nil
-}
-
-func (p Plan) Execute() Report {
-	if !p.Enabled || strings.TrimSpace(p.Root) == "" {
+// Run executes automatic go vet checks for the current module or workspace.
+func Run(workRoot string, cfg Config) Report {
+	if !cfg.Enabled {
 		return Report{}
 	}
 
-	report := Report{Root: p.Root}
+	root, err := discoverVetRoot(workRoot)
 
-	targets, err := discoverVetTargets(p.Root)
+	if err != nil {
+		return Report{
+			Errors: []ErrorResult{{
+				File:    workRoot,
+				Message: err.Error(),
+			}},
+		}
+	}
+
+	if strings.TrimSpace(root) == "" {
+		return Report{}
+	}
+
+	report := Report{Root: root}
+
+	targets, err := discoverVetTargets(root)
 
 	if err != nil {
 		report.Errors = append(report.Errors, ErrorResult{
-			File:    p.Root,
+			File:    root,
 			Message: err.Error(),
 		})
 
@@ -105,6 +90,7 @@ func (p Plan) Execute() Report {
 	return report
 }
 
+// ErrorCount returns the number of vet errors in the report.
 func (r Report) ErrorCount() int {
 	return len(r.Errors)
 }

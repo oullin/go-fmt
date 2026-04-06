@@ -6,7 +6,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/oullin/go-fmt/packages/driver/cli"
+	"github.com/oullin/go-fmt/packages/driver/internal/cli"
 	"github.com/oullin/go-fmt/packages/driver/testutil"
 )
 

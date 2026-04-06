@@ -11,6 +11,8 @@ import (
 	"github.com/oullin/go-fmt/semantic/rules"
 )
 
+type Rule struct{}
+
 const (
 	declCategoryImport = iota
 	declCategoryConst
@@ -18,8 +20,6 @@ const (
 	declCategoryType
 	declCategoryOther
 )
-
-type Rule struct{}
 
 func New() Rule {
 	return Rule{}

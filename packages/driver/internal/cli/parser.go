@@ -5,17 +5,17 @@ import (
 	"io"
 )
 
-type Parser struct {
-	Stderr io.Writer
+type parser struct {
+	stderr io.Writer
 }
 
-func NewParser(stderr io.Writer) Parser {
-	return Parser{Stderr: stderr}
+func newParser(stderr io.Writer) parser {
+	return parser{stderr: stderr}
 }
 
-func (p Parser) Parse(mode Mode, args []string) (Options, error) {
+func (p parser) Parse(mode Mode, args []string) (options, error) {
 	fs := flag.NewFlagSet(mode.String(), flag.ContinueOnError)
-	fs.SetOutput(p.Stderr)
+	fs.SetOutput(p.stderr)
 
 	configPath := fs.String("config", "", "Path to go-fmt YAML config")
 	reportRoot := fs.String("cwd", "", "Path used for config discovery and report-relative file paths")
@@ -23,15 +23,15 @@ func (p Parser) Parse(mode Mode, args []string) (Options, error) {
 	hostPath := fs.String("host-path", "", "Absolute host path under HOST_PROJECT_PATH to check or format")
 
 	if err := fs.Parse(args); err != nil {
-		return Options{}, err
+		return options{}, err
 	}
 
-	return Options{
-		Mode:         mode,
-		ConfigPath:   *configPath,
-		ReportRoot:   *reportRoot,
-		OutputFormat: *outputFormat,
-		HostPath:     HostPath(*hostPath),
-		Positional:   fs.Args(),
+	return options{
+		mode:         mode,
+		configPath:   *configPath,
+		reportRoot:   *reportRoot,
+		outputFormat: *outputFormat,
+		hostPath:     HostPath(*hostPath),
+		positional:   fs.Args(),
 	}, nil
 }

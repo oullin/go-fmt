@@ -9,8 +9,10 @@ import (
 	"github.com/spf13/viper"
 )
 
+// DefaultFileName is the config file name discovered in the working tree.
 const DefaultFileName = "config.yml"
 
+// Load reads CLI configuration from disk or returns defaults when none exists.
 func Load(cwd, explicitPath string) (Config, error) {
 	cfg := Default()
 

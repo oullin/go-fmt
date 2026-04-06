@@ -14,6 +14,7 @@ import (
 	"github.com/oullin/go-fmt/packages/formatter/rules"
 )
 
+// Rule enforces blank-line and type-order spacing rules.
 type Rule struct{}
 
 type importAliases map[string]string
@@ -25,10 +26,12 @@ var stdlibSpacingImports = map[string]string{
 	"math/rand/v2": "rand",
 }
 
+// New returns the built-in spacing rule.
 func New() Rule {
 	return Rule{}
 }
 
+// Name returns the rule identifier used in reports.
 func (Rule) Name() string {
 	return "spacing"
 }
@@ -63,6 +66,18 @@ func analyse(filename string, src []byte) ([]rules.Violation, []byte, error) {
 			next := list[i+1]
 			endLine := fset.Position(current.End()).Line
 			nextLine := fset.Position(next.Pos()).Line
+
+			if currentLine, ok := setupSpacingLine(list, i, current, next, aliases, fset); ok {
+				violations = append(violations, rules.Violation{
+					Rule:    "spacing",
+					File:    filename,
+					Line:    currentLine,
+					Message: "missing blank line before selector call setup",
+				})
+
+				offset := lineStartOffset(lineStarts, currentLine)
+				insertions[offset] = struct{}{}
+			}
 
 			if endLine == nextLine {
 				continue
@@ -131,6 +146,33 @@ func analyse(filename string, src []byte) ([]rules.Violation, []byte, error) {
 	}
 
 	return violations, formatted, nil
+}
+
+func setupSpacingLine(list []ast.Stmt, index int, current ast.Stmt, next ast.Stmt, aliases importAliases, fset *token.FileSet) (int, bool) {
+	if index == 0 {
+		return 0, false
+	}
+
+	receiverName, ok := selectorReceiverName(next, aliases)
+
+	if !ok {
+		return 0, false
+	}
+
+	assignedName, ok := assignedIdentifier(current)
+
+	if !ok || assignedName != receiverName {
+		return 0, false
+	}
+
+	currentLine := fset.Position(current.Pos()).Line
+	prevEndLine := fset.Position(list[index-1].End()).Line
+
+	if currentLine >= prevEndLine+2 {
+		return 0, false
+	}
+
+	return currentLine, true
 }
 
 func inspectStmtLists(file *ast.File, visit func([]ast.Stmt)) {
@@ -274,19 +316,7 @@ func buildImportAliases(file *ast.File) importAliases {
 }
 
 func stdlibSpacedCallLabel(stmt ast.Stmt, aliases importAliases) (string, bool) {
-	exprStmt, ok := stmt.(*ast.ExprStmt)
-
-	if !ok {
-		return "", false
-	}
-
-	call, ok := exprStmt.X.(*ast.CallExpr)
-
-	if !ok {
-		return "", false
-	}
-
-	selector, ok := call.Fun.(*ast.SelectorExpr)
+	selector, ok := selectorCall(stmt)
 
 	if !ok {
 		return "", false
@@ -298,13 +328,101 @@ func stdlibSpacedCallLabel(stmt ast.Stmt, aliases importAliases) (string, bool) 
 		return "", false
 	}
 
-	switch aliases[pkgIdent.Name] {
+	return selectorLabel(pkgIdent.Name, selector.Sel.Name, aliases)
+}
+
+func selectorCall(stmt ast.Stmt) (*ast.SelectorExpr, bool) {
+	exprStmt, ok := stmt.(*ast.ExprStmt)
+
+	if !ok {
+		return nil, false
+	}
+
+	call, ok := exprStmt.X.(*ast.CallExpr)
+
+	if !ok {
+		return nil, false
+	}
+
+	selector, ok := call.Fun.(*ast.SelectorExpr)
+
+	if !ok {
+		return nil, false
+	}
+
+	return selector, true
+}
+
+func selectorReceiverName(stmt ast.Stmt, aliases importAliases) (string, bool) {
+	selector, ok := selectorCall(stmt)
+
+	if !ok {
+		return "", false
+	}
+
+	pkgIdent, ok := selector.X.(*ast.Ident)
+
+	if !ok {
+		return "", false
+	}
+
+	if _, ok := selectorLabel(pkgIdent.Name, selector.Sel.Name, aliases); !ok {
+		return "", false
+	}
+
+	return pkgIdent.Name, true
+}
+
+func selectorLabel(receiverName, selectorName string, aliases importAliases) (string, bool) {
+	switch aliases[receiverName] {
 	case "sort":
 		return "sort call", true
 	case "slices":
-		return "sort call", strings.HasPrefix(selector.Sel.Name, "Sort")
+		return "sort call", strings.HasPrefix(selectorName, "Sort")
 	case "math/rand", "math/rand/v2":
 		return "rand call", true
+	}
+
+	switch receiverName {
+	case "sort":
+		return "sort call", true
+	case "slices":
+		return "sort call", strings.HasPrefix(selectorName, "Sort")
+	case "rand":
+		return "rand call", true
+	default:
+		return "", false
+	}
+}
+
+func assignedIdentifier(stmt ast.Stmt) (string, bool) {
+	switch typed := stmt.(type) {
+	case *ast.AssignStmt:
+		if len(typed.Lhs) != 1 {
+			return "", false
+		}
+
+		ident, ok := typed.Lhs[0].(*ast.Ident)
+
+		if !ok {
+			return "", false
+		}
+
+		return ident.Name, true
+	case *ast.DeclStmt:
+		genDecl, ok := typed.Decl.(*ast.GenDecl)
+
+		if !ok || genDecl.Tok != token.VAR || len(genDecl.Specs) != 1 {
+			return "", false
+		}
+
+		valueSpec, ok := genDecl.Specs[0].(*ast.ValueSpec)
+
+		if !ok || len(valueSpec.Names) != 1 {
+			return "", false
+		}
+
+		return valueSpec.Names[0].Name, true
 	default:
 		return "", false
 	}

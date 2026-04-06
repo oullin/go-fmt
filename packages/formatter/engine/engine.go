@@ -6,17 +6,24 @@ import (
 	"os"
 
 	"github.com/oullin/go-fmt/packages/formatter/config"
-	"github.com/oullin/go-fmt/packages/formatter/formatter"
 	"github.com/oullin/go-fmt/packages/formatter/rules"
 )
 
+// Formatter applies a single formatting pass to Go source.
+type Formatter interface {
+	Name() string
+	Format(src []byte) ([]byte, error)
+}
+
+// Engine runs rules and formatter passes across a set of Go files.
 type Engine struct {
 	cfg        config.Config
 	rules      []rules.Rule
-	formatters []formatter.Formatter
+	formatters []Formatter
 }
 
-func New(cfg config.Config, rr []rules.Rule, ff []formatter.Formatter) *Engine {
+// New builds an Engine with the supplied rule and formatter pipeline.
+func New(cfg config.Config, rr []rules.Rule, ff []Formatter) *Engine {
 	return &Engine{
 		cfg:        cfg,
 		rules:      rr,
@@ -24,6 +31,7 @@ func New(cfg config.Config, rr []rules.Rule, ff []formatter.Formatter) *Engine {
 	}
 }
 
+// Check reports formatting changes without writing them to disk.
 func (e *Engine) Check(paths []string) (Report, error) {
 	files, err := CollectGoFiles(paths, e.cfg)
 
@@ -34,6 +42,7 @@ func (e *Engine) Check(paths []string) (Report, error) {
 	return e.run(files, false)
 }
 
+// Format applies formatting changes and writes them to disk.
 func (e *Engine) Format(paths []string) (Report, error) {
 	files, err := CollectGoFiles(paths, e.cfg)
 
@@ -44,10 +53,12 @@ func (e *Engine) Format(paths []string) (Report, error) {
 	return e.run(files, true)
 }
 
+// CheckFiles reports formatting changes for an explicit list of files.
 func (e *Engine) CheckFiles(files []string) (Report, error) {
 	return e.run(files, false)
 }
 
+// FormatFiles applies formatting changes to an explicit list of files.
 func (e *Engine) FormatFiles(files []string) (Report, error) {
 	return e.run(files, true)
 }

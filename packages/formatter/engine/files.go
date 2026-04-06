@@ -10,6 +10,7 @@ import (
 	"github.com/oullin/go-fmt/packages/formatter/config"
 )
 
+// CollectGoFiles expands input paths into a sorted list of Go source files.
 func CollectGoFiles(paths []string, cfg config.Config) ([]string, error) {
 	if len(paths) == 0 {
 		paths = []string{"."}
@@ -76,7 +77,7 @@ func CollectGoFiles(paths []string, cfg config.Config) ([]string, error) {
 	return files, nil
 }
 
-func FilterFiles(files, selected []string) []string {
+func filterFiles(files, selected []string) []string {
 	if len(files) == 0 || len(selected) == 0 {
 		return nil
 	}

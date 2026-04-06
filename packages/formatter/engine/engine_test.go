@@ -1,6 +1,7 @@
 package engine_test
 
 import (
+	"go/format"
 	"os"
 	"path/filepath"
 	"strings"
@@ -9,17 +10,37 @@ import (
 	"github.com/oullin/go-fmt/packages/driver/testutil"
 	"github.com/oullin/go-fmt/packages/formatter/config"
 	"github.com/oullin/go-fmt/packages/formatter/engine"
-	"github.com/oullin/go-fmt/packages/formatter/formatter"
 	"github.com/oullin/go-fmt/packages/formatter/rules"
 	"github.com/oullin/go-fmt/packages/formatter/rules/spacing"
+	"golang.org/x/tools/imports"
 )
+
+type gofmtFormatter struct{}
+
+type goimportsFormatter struct{}
 
 func defaultRules() []rules.Rule {
 	return []rules.Rule{spacing.New()}
 }
 
-func defaultFormatters() []formatter.Formatter {
-	return []formatter.Formatter{formatter.NewGofmt(), formatter.NewGoimports()}
+func (gofmtFormatter) Name() string {
+	return "gofmt"
+}
+
+func (gofmtFormatter) Format(src []byte) ([]byte, error) {
+	return format.Source(src)
+}
+
+func (goimportsFormatter) Name() string {
+	return "goimports"
+}
+
+func (goimportsFormatter) Format(src []byte) ([]byte, error) {
+	return imports.Process("", src, nil)
+}
+
+func defaultFormatters() []engine.Formatter {
+	return []engine.Formatter{gofmtFormatter{}, goimportsFormatter{}}
 }
 
 func TestCollectGoFilesSkipsHiddenVendorAndGenerated(t *testing.T) {

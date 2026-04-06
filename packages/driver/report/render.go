@@ -9,6 +9,7 @@ import (
 	"github.com/oullin/go-fmt/packages/vet"
 )
 
+// Combined contains the formatter and vet reports rendered by the CLI.
 type Combined struct {
 	Formatter formatterengine.Report `json:"formatter"`
 	Vet       vet.Report             `json:"vet"`
@@ -19,6 +20,7 @@ type jsonErrorMessage struct {
 	Message string `json:"message"`
 }
 
+// Render writes the report in the requested output format.
 func Render(w io.Writer, format, cwd, mode string, report Combined) error {
 	switch format {
 	case "text":

@@ -5,19 +5,23 @@ import (
 	"github.com/oullin/go-fmt/packages/vet"
 )
 
+// Toggle enables or disables a config section.
 type Toggle struct {
 	Enabled bool `mapstructure:"enabled"`
 }
 
+// Rules configures rule toggles exposed by the CLI.
 type Rules struct {
 	Spacing Toggle `mapstructure:"spacing"`
 }
 
+// Formatters configures formatter passes exposed by the CLI.
 type Formatters struct {
 	Gofmt     bool `mapstructure:"gofmt"`
 	Goimports bool `mapstructure:"goimports"`
 }
 
+// Config controls CLI formatting and vet behavior.
 type Config struct {
 	Rules      Rules      `mapstructure:"rules"`
 	Vet        Toggle     `mapstructure:"vet"`
@@ -27,6 +31,7 @@ type Config struct {
 	NotName    []string   `mapstructure:"not_name"`
 }
 
+// Default returns the default CLI configuration.
 func Default() Config {
 	return Config{
 		Rules: Rules{
@@ -47,6 +52,7 @@ func Default() Config {
 	}
 }
 
+// FormatterConfig projects CLI config into the public formatter config type.
 func (c Config) FormatterConfig() formatterconfig.Config {
 	return formatterconfig.Config{
 		Rules: formatterconfig.Rules{
@@ -62,8 +68,7 @@ func (c Config) FormatterConfig() formatterconfig.Config {
 	}
 }
 
+// VetConfig projects CLI config into the public vet config type.
 func (c Config) VetConfig() vet.Config {
-	return vet.Config{
-		Vet: vet.Toggle{Enabled: c.Vet.Enabled},
-	}
+	return vet.Config{Enabled: c.Vet.Enabled}
 }

@@ -2,6 +2,7 @@ package engine
 
 import "github.com/oullin/go-fmt/packages/formatter/rules"
 
+// FileResult describes the outcome for a single file.
 type FileResult struct {
 	File       string            `json:"file"`
 	Applied    []string          `json:"applied,omitempty"`
@@ -11,11 +12,13 @@ type FileResult struct {
 	Changed    bool              `json:"changed,omitempty"`
 }
 
+// ErrorResult describes an engine error associated with a file or workspace.
 type ErrorResult struct {
 	File    string `json:"file,omitempty"`
 	Message string `json:"message"`
 }
 
+// Report summarizes an engine run across one or more files.
 type Report struct {
 	Result  string        `json:"result"`
 	Files   int           `json:"files"`
@@ -24,6 +27,7 @@ type Report struct {
 	Errors  []ErrorResult `json:"errors,omitempty"`
 }
 
+// ViolationCount returns the total number of rule violations in the report.
 func (r Report) ViolationCount() int {
 	total := 0
 
@@ -34,6 +38,7 @@ func (r Report) ViolationCount() int {
 	return total
 }
 
+// ErrorCount returns the total number of engine errors in the report.
 func (r Report) ErrorCount() int {
 	total := len(r.Errors)
 
@@ -46,6 +51,7 @@ func (r Report) ErrorCount() int {
 	return total
 }
 
+// AllErrors returns every engine error, including per-file errors.
 func (r Report) AllErrors() []ErrorResult {
 	out := append([]ErrorResult(nil), r.Errors...)
 

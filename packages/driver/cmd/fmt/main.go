@@ -5,7 +5,7 @@ import (
 	"io"
 	"os"
 
-	"github.com/oullin/go-fmt/packages/driver/cli"
+	"github.com/oullin/go-fmt/packages/driver/internal/cli"
 )
 
 var version = "dev"
@@ -48,6 +48,6 @@ func run(args []string, stdout, stderr io.Writer) int {
 }
 
 func printUsage(w io.Writer) {
-	fmt.Fprintf(w, "go-fmt check [--git-diff] [--host-path /absolute/host/path ...] [paths...]\n\n")
-	fmt.Fprintf(w, "go-fmt format [--git-diff] [--host-path /absolute/host/path ...] [paths...]\n\n")
+	fmt.Fprintf(w, "go-fmt check [--host-path /absolute/host/path] [paths...]\n\n")
+	fmt.Fprintf(w, "go-fmt format [--host-path /absolute/host/path] [paths...]\n\n")
 }

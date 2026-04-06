@@ -15,14 +15,6 @@ import (
 	"github.com/oullin/go-fmt/semantic/rules"
 )
 
-const (
-	stringsImportMissing stringsImportKind = iota
-	stringsImportDefault
-	stringsImportAlias
-	stringsImportDot
-	stringsImportBlank
-)
-
 type Rule struct{}
 
 type stringsImportKind int
@@ -36,6 +28,14 @@ type shadowState struct {
 	fileScopeShadows bool
 	scopes           []bool
 }
+
+const (
+	stringsImportMissing stringsImportKind = iota
+	stringsImportDefault
+	stringsImportAlias
+	stringsImportDot
+	stringsImportBlank
+)
 
 func New() Rule {
 	return Rule{}

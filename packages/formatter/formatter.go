@@ -1,44 +1,14 @@
 package formatter
 
 import (
-	"fmt"
-
 	"github.com/oullin/go-fmt/packages/formatter/config"
 	"github.com/oullin/go-fmt/packages/formatter/engine"
-	stepformatter "github.com/oullin/go-fmt/packages/formatter/formatter"
+	"github.com/oullin/go-fmt/packages/formatter/internal/step"
 	"github.com/oullin/go-fmt/packages/formatter/rules"
 	"github.com/oullin/go-fmt/packages/formatter/rules/spacing"
 )
 
-type Mode string
-
-type RuleSet struct{}
-
-type FormatterSet struct{}
-
-type Planner struct {
-	RuleSet      RuleSet
-	FormatterSet FormatterSet
-}
-
-type BuildOptions struct {
-	Mode     Mode
-	Config   config.Config
-	RunPaths []string
-}
-
-type Plan struct {
-	Mode     Mode
-	RunPaths []string
-	Engine   *engine.Engine
-}
-
-const (
-	CheckMode  Mode = "check"
-	FormatMode Mode = "format"
-)
-
-func (RuleSet) Build(cfg config.Config) []rules.Rule {
+func buildRules(cfg config.Config) []rules.Rule {
 	var out []rules.Rule
 
 	if cfg.Rules.Spacing.Enabled {
@@ -48,41 +18,30 @@ func (RuleSet) Build(cfg config.Config) []rules.Rule {
 	return out
 }
 
-func (FormatterSet) Build(cfg config.Config) []stepformatter.Formatter {
-	var out []stepformatter.Formatter
+func buildFormatters(cfg config.Config) []engine.Formatter {
+	var out []engine.Formatter
 
 	if cfg.Formatters.Gofmt {
-		out = append(out, stepformatter.NewGofmt())
+		out = append(out, step.NewGofmt())
 	}
 
 	if cfg.Formatters.Goimports {
-		out = append(out, stepformatter.NewGoimports())
+		out = append(out, step.NewGoimports())
 	}
 
 	return out
 }
 
-func (p Planner) Build(options BuildOptions) (Plan, error) {
-	switch options.Mode {
-	case CheckMode, FormatMode:
-	default:
-		return Plan{}, fmt.Errorf("unsupported mode %q", options.Mode)
-	}
-
-	return Plan{
-		Mode:     options.Mode,
-		RunPaths: options.RunPaths,
-		Engine:   engine.New(options.Config, p.RuleSet.Build(options.Config), p.FormatterSet.Build(options.Config)),
-	}, nil
+func newEngine(cfg config.Config) *engine.Engine {
+	return engine.New(cfg, buildRules(cfg), buildFormatters(cfg))
 }
 
-func (p Plan) Execute() (engine.Report, error) {
-	switch p.Mode {
-	case CheckMode:
-		return p.Engine.Check(p.RunPaths)
-	case FormatMode:
-		return p.Engine.Format(p.RunPaths)
-	default:
-		return engine.Report{}, fmt.Errorf("unsupported mode %q", p.Mode)
-	}
+// Check reports formatting changes without writing them to disk.
+func Check(paths []string, cfg config.Config) (engine.Report, error) {
+	return newEngine(cfg).Check(paths)
+}
+
+// Format applies formatting changes and writes them to disk.
+func Format(paths []string, cfg config.Config) (engine.Report, error) {
+	return newEngine(cfg).Format(paths)
 }

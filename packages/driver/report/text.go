@@ -9,6 +9,7 @@ import (
 	formatterengine "github.com/oullin/go-fmt/packages/formatter/engine"
 )
 
+// RenderText writes the human-readable text report representation.
 func RenderText(w io.Writer, cwd, mode string, report Combined) error {
 	if _, err := color.New(color.Bold).Fprintf(w, "\nFormatter\n\n"); err != nil {
 		return err

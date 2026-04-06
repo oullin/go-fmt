@@ -40,7 +40,7 @@ test: ## Run all tests with verbose output
 test-race: ## Run all tests with the race detector
 	@# Run Go tests with race detection enabled for concurrency-sensitive changes.
 	for dir in packages/formatter packages/vet packages/driver; do \
-		./scripts/with-storage-env.sh go -C $$dir test ./... -race -v; \
+		CGO_ENABLED=1 ./scripts/with-storage-env.sh go -C $$dir test ./... -race -v; \
 	done
 
 test-short: ## Run tests in short mode

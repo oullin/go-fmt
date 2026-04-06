@@ -230,6 +230,10 @@ func requiresTrailingBlankLine(current ast.Stmt, next ast.Stmt, aliases importAl
 }
 
 func requiresLeadingBlankLine(stmt ast.Stmt, aliases importAliases) (string, bool) {
+	if label, ok := routeRegistryCallLabel(stmt); ok {
+		return label, true
+	}
+
 	if label, ok := stdlibSpacedCallLabel(stmt, aliases); ok {
 		return label, true
 	}
@@ -244,6 +248,27 @@ func requiresLeadingBlankLine(stmt ast.Stmt, aliases importAliases) (string, boo
 	}
 
 	return "", false
+}
+
+func routeRegistryCallLabel(stmt ast.Stmt) (string, bool) {
+	selector, ok := selectorCall(stmt)
+
+	if !ok {
+		return "", false
+	}
+
+	receiver, ok := selector.X.(*ast.Ident)
+
+	if !ok || receiver.Name != "routes" {
+		return "", false
+	}
+
+	switch selector.Sel.Name {
+	case "Add", "Group":
+		return "routes call", true
+	default:
+		return "", false
+	}
 }
 
 func statementLabel(stmt ast.Stmt, aliases importAliases) string {

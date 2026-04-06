@@ -416,6 +416,25 @@ func run() {
 }
 ```
 
+**Blank lines before top-level `routes.*` calls**
+
+Top-level route registration calls on a `routes` registry are separated with a blank line before each later `routes.Add(...)` or `routes.Group(...)` call.
+
+```go
+// before
+func defineRoutes() {
+    routes.Add("dashboard", "GET", "/dashboard")
+    routes.Group("contacts", "/contacts", func(g *wayfinder.Group) {})
+}
+
+// after
+func defineRoutes() {
+    routes.Add("dashboard", "GET", "/dashboard")
+
+    routes.Group("contacts", "/contacts", func(g *wayfinder.Group) {})
+}
+```
+
 **Blank lines around type declarations**
 
 `type` declarations are separated from surrounding code with a blank line. The formatter reports this as `missing blank line around type definition`.
@@ -590,6 +609,8 @@ make fmt-source
 make install
 make clean
 ```
+
+`make test-race` forces `CGO_ENABLED=1` because the Go race detector requires CGO.
 
 ### Make variables
 

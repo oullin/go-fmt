@@ -471,6 +471,121 @@ func run() {
 	}
 }
 
+func TestApplyFormatsBlankLineBeforeTopLevelRoutesGroupCall(t *testing.T) {
+	path := writeTempGoFile(t, `package sample
+
+func run() {
+	routes.Add("dashboard", "GET", "/dashboard")
+	routes.Group("contacts", "/contacts", func(g group) {
+		g.Add("index", "GET", "")
+	})
+}
+`)
+
+	violations, formatted, err := New().Apply(path, mustReadFile(t, path))
+
+	if err != nil {
+		t.Fatalf("apply: %v", err)
+	}
+
+	if len(violations) != 1 {
+		t.Fatalf("expected 1 violation, got %d", len(violations))
+	}
+
+	if !strings.Contains(violations[0].Message, "before routes call") {
+		t.Fatalf("unexpected message %q", violations[0].Message)
+	}
+
+	if !strings.Contains(string(formatted), "routes.Add(\"dashboard\", \"GET\", \"/dashboard\")\n\n\troutes.Group(\"contacts\", \"/contacts\", func(g group) {") {
+		t.Fatalf("expected blank line before top-level routes.Group call, got:\n%s", formatted)
+	}
+}
+
+func TestApplyFormatsBlankLineBeforeConsecutiveTopLevelRoutesGroupCalls(t *testing.T) {
+	path := writeTempGoFile(t, `package sample
+
+func run() {
+	routes.Group("contacts", "/contacts", func(g group) {
+		g.Add("index", "GET", "")
+	})
+	routes.Group("organizations", "/organizations", func(g group) {
+		g.Add("index", "GET", "")
+	})
+}
+`)
+
+	violations, formatted, err := New().Apply(path, mustReadFile(t, path))
+
+	if err != nil {
+		t.Fatalf("apply: %v", err)
+	}
+
+	if len(violations) != 1 {
+		t.Fatalf("expected 1 violation, got %d", len(violations))
+	}
+
+	if !strings.Contains(string(formatted), "\n\t})\n\n\troutes.Group(\"organizations\", \"/organizations\", func(g group) {") {
+		t.Fatalf("expected blank line before second top-level routes.Group call, got:\n%s", formatted)
+	}
+}
+
+func TestApplyKeepsExistingBlankLineBeforeTopLevelRoutesCall(t *testing.T) {
+	path := writeTempGoFile(t, `package sample
+
+func run() {
+	routes.Add("dashboard", "GET", "/dashboard")
+
+	routes.Group("contacts", "/contacts", func(g group) {
+		g.Add("index", "GET", "")
+	})
+}
+`)
+
+	original := string(mustReadFile(t, path))
+	violations, formatted, err := New().Apply(path, []byte(original))
+
+	if err != nil {
+		t.Fatalf("apply: %v", err)
+	}
+
+	if len(violations) != 0 {
+		t.Fatalf("expected 0 violations, got %d", len(violations))
+	}
+
+	if string(formatted) != original {
+		t.Fatalf("expected unchanged output, got:\n%s", formatted)
+	}
+}
+
+func TestApplyIgnoresNestedRouteGroupVariables(t *testing.T) {
+	path := writeTempGoFile(t, `package sample
+
+func run() {
+	routes.Group("contacts", "/contacts", func(g group) {
+		g.Add("index", "GET", "")
+		g.Group("notes", "", func(ng group) {
+			ng.Add("store", "POST", "/{contact}/notes")
+		})
+	})
+}
+`)
+
+	original := string(mustReadFile(t, path))
+	violations, formatted, err := New().Apply(path, []byte(original))
+
+	if err != nil {
+		t.Fatalf("apply: %v", err)
+	}
+
+	if len(violations) != 0 {
+		t.Fatalf("expected 0 violations, got %d", len(violations))
+	}
+
+	if string(formatted) != original {
+		t.Fatalf("expected unchanged output, got:\n%s", formatted)
+	}
+}
+
 func TestApplyFormatsBlankLineAfterShortAssignedFuncLiteral(t *testing.T) {
 	path := writeTempGoFile(t, `package sample
 

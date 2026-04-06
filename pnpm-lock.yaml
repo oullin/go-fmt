@@ -12,9 +12,13 @@ importers:
         specifier: 2.5.8
         version: 2.5.8
 
-  semantic: {}
+  packages/vet: {}
 
-  tooling:
+  packages/driver: {}
+
+  packages/formatter: {}
+
+  packages/support:
     devDependencies:
       oxfmt:
         specifier: 0.41.0

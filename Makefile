@@ -3,15 +3,16 @@ SHELL := /bin/bash
 
 APP := go-fmt
 CMD := ./cmd/fmt
-GO_WORKDIR := semantic
-BUILD_DIR := bin
-BIN := $(BUILD_DIR)/$(APP)
-OXFMT_BIN := tooling/node_modules/.bin/oxfmt
+GO_WORKDIR := packages/driver
+OXFMT_BIN := packages/support/node_modules/.bin/oxfmt
 
 ARGS ?= . ## With '.', format changed tracked/untracked files first, then widen semantic formatting if needed; set a path to target a specific subtree
 VERSION ?= $(shell git describe --tags --always --dirty 2>/dev/null || echo dev) ## Build version injected into binaries
 CGO_ENABLED ?= 0 ## CGO setting used for build and release
-DIST_DIR ?= dist ## Directory for release binaries
+BUILD_DIR ?= storage/bin ## Directory for local build binaries
+BIN ?= $(BUILD_DIR)/$(APP)
+DIST_DIR ?= storage/dist ## Directory for release binaries
+DIST_TEST_DIR ?= storage/dist-test ## Directory for test build artifacts
 RELEASE_PLATFORMS ?= darwin/amd64 darwin/arm64 linux/amd64 linux/arm64 ## Space-separated GOOS/GOARCH release targets
 
 .PHONY: help format build release test test-race test-short vet fmt-source install clean
@@ -24,9 +25,9 @@ format: ## Apply formatter changes to ARGS
 	@# Run the repository formatter script against the requested files or directories.
 	@OXFMT_BIN="$(OXFMT_BIN)" ./scripts/format.sh $(ARGS)
 
-build: ## Build a host-native binary into ./bin
+build: ## Build a host-native binary into ./storage/bin
 	@# Compile the current version into a local binary for the host platform.
-	@VERSION='$(strip $(VERSION))' ./scripts/build.sh
+	@VERSION='$(strip $(VERSION))' BUILD_DIR='$(strip $(BUILD_DIR))' BIN='$(strip $(BIN))' ./scripts/build.sh
 
 release: ## Build release binaries into $(DIST_DIR)
 	@# Produce distributable binaries for every configured GOOS/GOARCH target.
@@ -38,11 +39,15 @@ test: ## Run all tests with verbose output
 
 test-race: ## Run all tests with the race detector
 	@# Run Go tests with race detection enabled for concurrency-sensitive changes.
-	go -C $(GO_WORKDIR) test ./... -race -v
+	for dir in packages/formatter packages/vet packages/driver; do \
+		CGO_ENABLED=1 ./scripts/with-storage-env.sh go -C $$dir test ./... -race -v; \
+	done
 
 test-short: ## Run tests in short mode
 	@# Run the fast Go test subset intended for quick local verification.
-	go -C $(GO_WORKDIR) test ./... -short
+	for dir in packages/formatter packages/vet packages/driver; do \
+		./scripts/with-storage-env.sh go -C $$dir test ./... -short; \
+	done
 
 vet: ## Run go vet across the module
 	@# Run static analysis checks configured for the repository workspace.
@@ -54,14 +59,10 @@ fmt-source: ## Rewrite Go source formatting in the repository
 
 install: ## Install the CLI with go install
 	@# Install the CLI into the active Go bin directory for local use.
-	go -C $(GO_WORKDIR) install $(CMD)
+	./scripts/with-storage-env.sh go -C $(GO_WORKDIR) install $(CMD)
 
 clean: ## Remove build artifacts and clean the Go cache
-	@# Remove the host-native build artifact from the local bin directory.
-	rm -f $(BIN)
-	@# Remove cross-platform release outputs from the distribution directory.
-	rm -rf $(DIST_DIR)
-	@# Remove workspace dependency installs and Turbo cache state.
-	rm -rf .turbo node_modules tooling/node_modules semantic/node_modules
-	@# Clear the Go build cache for the semantic workspace.
-	go -C $(GO_WORKDIR) clean -cache
+	@# Remove storage-managed binaries, release outputs, and caches.
+	rm -rf $(BUILD_DIR) $(DIST_DIR) $(DIST_TEST_DIR) storage/.cache
+	@# Remove workspace dependency installs.
+	rm -rf node_modules packages/support/node_modules packages/formatter/node_modules packages/vet/node_modules packages/driver/node_modules

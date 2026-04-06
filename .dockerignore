@@ -14,27 +14,23 @@
 Thumbs.db
 
 # Go caches
-.gocache
-.gopath
-
-# Build artifacts
-bin
+# Storage-managed caches and build artifacts
+storage/bin/
+storage/dist/
+storage/dist-test/
+storage/.cache/
 builds
-dist
-dist-test/
 
 # Node (not needed for Go Docker build)
 node_modules
 tooling/node_modules
-semantic/node_modules
-
-# Turbo
-.turbo
+packages/semantic/node_modules
+packages/correctness/node_modules
+packages/orchestrator/node_modules
 
 # Runtime / generated
 config.yml
 coverage.out
-storage/
 
 # Compiled binaries
 *.exe

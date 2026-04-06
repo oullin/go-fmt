@@ -3,8 +3,9 @@ set -euo pipefail
 
 source "$(dirname "$0")/env.sh"
 
-dist_dir="${DIST_DIR:-dist}"
+dist_dir="${DIST_DIR}"
 release_platforms="${RELEASE_PLATFORMS:-darwin/amd64 darwin/arm64 linux/amd64 linux/arm64}"
+dist_dir_path="$(canonical_path "$dist_dir")"
 
 os_label() {
 	case "$1" in
@@ -23,8 +24,9 @@ arch_label() {
 	esac
 }
 
-rm -rf "$dist_dir"
-mkdir -p "$dist_dir"
+ensure_storage_layout
+rm -rf "$dist_dir_path"
+mkdir -p "$dist_dir_path"
 
 for platform in $release_platforms; do
 	if [[ "$platform" != */* ]]; then
@@ -34,12 +36,12 @@ for platform in $release_platforms; do
 
 	goos="${platform%/*}"
 	goarch="${platform#*/}"
-	output="${dist_dir}/${APP}-${goos}-${goarch}"
+	output="${dist_dir_path}/${APP}-${goos}-${goarch}"
 
 	printf 'Building %s %s (%s/%s)...\n' "$(os_label "$goos")" "$(arch_label "$goos" "$goarch")" "$goos" "$goarch"
 
 	CGO_ENABLED="$CGO_ENABLED" GOOS="$goos" GOARCH="$goarch" \
-		go -C "$GO_WORKDIR" build -trimpath -ldflags "-s -w -X main.version=$VERSION" -o "../$output" "$CMD"
+		go -C "$GO_WORKDIR" build -trimpath -ldflags "-s -w -X main.version=$VERSION" -o "$output" "$CMD"
 
 	chmod +x "$output"
 done

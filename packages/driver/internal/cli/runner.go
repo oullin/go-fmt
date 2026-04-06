@@ -1,0 +1,123 @@
+package cli
+
+import (
+	"fmt"
+	"io"
+	"os"
+	"strings"
+
+	driverconfig "github.com/oullin/go-fmt/packages/driver/config"
+	driverreport "github.com/oullin/go-fmt/packages/driver/report"
+	"github.com/oullin/go-fmt/packages/formatter"
+	formatterconfig "github.com/oullin/go-fmt/packages/formatter/config"
+	formatterengine "github.com/oullin/go-fmt/packages/formatter/engine"
+	"github.com/oullin/go-fmt/packages/vet"
+)
+
+type Runner struct {
+	stdout io.Writer
+	stderr io.Writer
+	parser parser
+}
+
+func NewRunner(stdout, stderr io.Writer) Runner {
+	return Runner{
+		stdout: stdout,
+		stderr: stderr,
+		parser: newParser(stderr),
+	}
+}
+
+func (r Runner) Run(mode Mode, args []string) int {
+	opts, err := r.parser.Parse(mode, args)
+
+	if err != nil {
+		return 1
+	}
+
+	workRoot, err := os.Getwd()
+
+	if err != nil {
+		r.writeError("resolve cwd: %v\n", err)
+
+		return 1
+	}
+
+	reportRoot := workRoot
+
+	if strings.TrimSpace(opts.reportRoot) != "" {
+		reportRoot = opts.reportRoot
+	}
+
+	cfg, err := driverconfig.Load(reportRoot, opts.configPath)
+
+	if err != nil {
+		r.writeError("%v\n", err)
+
+		return 1
+	}
+
+	runPaths, err := opts.hostPath.Resolve(workRoot, opts.positional)
+
+	if err != nil {
+		r.writeError("%v\n", err)
+
+		return 1
+	}
+
+	formatterReport, err := r.runFormatter(mode, runPaths, cfg.FormatterConfig())
+
+	if err != nil {
+		r.writeError("%v\n", err)
+
+		return 1
+	}
+
+	result := driverreport.Combined{
+		Formatter: formatterReport,
+		Vet:       vet.Run(workRoot, cfg.VetConfig()),
+	}
+
+	if err := driverreport.Render(r.stdout, opts.outputFormat, reportRoot, mode.String(), result); err != nil {
+		r.writeError("render report: %v\n", err)
+
+		return 1
+	}
+
+	return exitCode(mode, result)
+}
+
+func (r Runner) runFormatter(mode Mode, paths []string, cfg formatterconfig.Config) (formatterengine.Report, error) {
+	switch mode {
+	case CheckMode:
+		return formatter.Check(paths, cfg)
+	case FormatMode:
+		return formatter.Format(paths, cfg)
+	default:
+		return formatterengine.Report{}, fmt.Errorf("unsupported mode %q", mode)
+	}
+}
+
+func exitCode(mode Mode, result driverreport.Combined) int {
+	if result.Vet.ErrorCount() > 0 {
+		return 1
+	}
+
+	if mode == CheckMode {
+		if result.Formatter.Result == "pass" {
+			return 0
+		}
+
+		return 1
+	}
+
+	if result.Formatter.ErrorCount() > 0 {
+		return 1
+	}
+
+	return 0
+}
+
+func (r Runner) writeError(format string, args ...any) {
+	_, _ = fmt.Fprintf(r.stderr, format, args...)
+}

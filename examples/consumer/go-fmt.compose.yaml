@@ -3,13 +3,15 @@ services:
         image: ghcr.io/oullin/go-fmt:latest
         working_dir: /work
         volumes:
-            - .:/work
+            - ${GO_FMT_PROJECT_DIR:-${PWD}}:/work
+            - go-fmt-cache:/cache
         environment:
-            HOST_PROJECT_PATH: ${PWD}
-        # --host-path is repeatable; each path must stay under HOST_PROJECT_PATH.
-        command:
-            - format
-            - --host-path
-            - ${PWD}/pkg/api
-            - --host-path
-            - ${PWD}/internal/app
+            HOST_PROJECT_PATH: ${GO_FMT_PROJECT_DIR:-${PWD}}
+            GOCACHE: /cache/go-build
+            GOPATH: /cache/gopath
+            GOMODCACHE: /cache/gopath/pkg/mod
+        command: ['help']
+
+volumes:
+    go-fmt-cache:
+        name: go-fmt-cache

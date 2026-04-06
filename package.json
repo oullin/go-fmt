@@ -2,11 +2,11 @@
 	"name": "go-fmt-monorepo",
 	"private": true,
 	"scripts": {
-		"build": "pnpm --filter semantic run build",
+		"build": "pnpm --filter driver run build",
 		"format": "make format",
-		"format:tooling": "turbo run format --filter=tooling",
-		"test": "pnpm --filter semantic run test && ./scripts/test-format.sh",
-		"vet": "pnpm --filter semantic run vet"
+		"format:support": "./scripts/with-storage-env.sh pnpm turbo run format --cache-dir=storage/.cache/turbo --filter=support",
+		"test": "./scripts/with-storage-env.sh pnpm turbo run test --cache-dir=storage/.cache/turbo --filter=formatter --filter=vet --filter=driver",
+		"vet": "./scripts/with-storage-env.sh pnpm turbo run vet --cache-dir=storage/.cache/turbo --filter=formatter --filter=vet --filter=driver"
 	},
 	"devDependencies": {
 		"turbo": "2.5.8"

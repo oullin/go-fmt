@@ -19,6 +19,12 @@ type Rule struct{}
 
 type importAliases map[string]string
 
+type declBlock struct {
+	decl         ast.Decl
+	effectivePos token.Pos
+	anchored     bool
+}
+
 var stdlibSpacingImports = map[string]string{
 	"sort":         "sort",
 	"slices":       "slices",
@@ -126,6 +132,7 @@ func analyse(filename string, src []byte) ([]rules.Violation, []byte, error) {
 	}
 
 	violations = append(violations, typeOrderViolations(file, fset, filename)...)
+	violations = append(violations, embedAdjacencyViolations(file, fset, filename)...)
 
 	formatted := src
 
@@ -133,17 +140,17 @@ func analyse(filename string, src []byte) ([]rules.Violation, []byte, error) {
 		formatted = applyInsertions(formatted, insertions)
 	}
 
-	if len(violations) > 0 {
-		reordered, changed, err := reorderTypeDecls(filename, formatted)
+	reordered, changed, err := reorderTypeDecls(filename, formatted)
 
-		if err != nil {
-			return nil, nil, err
-		}
-
-		if changed {
-			formatted = reordered
-		}
+	if err != nil {
+		return nil, nil, err
 	}
+
+	if changed {
+		formatted = reordered
+	}
+
+	formatted = collapseEmbedSpacing(formatted)
 
 	return violations, formatted, nil
 }
@@ -559,19 +566,22 @@ func typeOrderViolations(file *ast.File, fset *token.FileSet, filename string) [
 	var violations []rules.Violation
 	seenNonType := false
 
-	for _, decl := range file.Decls {
-		genDecl, ok := decl.(*ast.GenDecl)
-
-		if ok && genDecl.Tok == token.IMPORT {
+	for _, block := range topLevelDeclBlocks(file) {
+		if isImportDecl(block.decl) {
 			continue
 		}
 
-		if isTypeDecl(decl) {
+		if block.anchored {
+			seenNonType = false
+			continue
+		}
+
+		if isTypeDecl(block.decl) {
 			if seenNonType {
 				violations = append(violations, rules.Violation{
 					Rule:    "spacing",
 					File:    filename,
-					Line:    fset.Position(decl.Pos()).Line,
+					Line:    fset.Position(block.decl.Pos()).Line,
 					Message: "type definitions must appear at the beginning of the file",
 				})
 			}
@@ -593,32 +603,13 @@ func reorderTypeDecls(filename string, src []byte) ([]byte, bool, error) {
 		return nil, false, err
 	}
 
-	if !hasOutOfOrderTypeDecls(file) {
+	desired := desiredDeclOrder(file)
+
+	if declOrdersEqual(file.Decls, desired) {
 		return src, false, nil
 	}
 
-	importsEnd := 0
-
-	for importsEnd < len(file.Decls) && isImportDecl(file.Decls[importsEnd]) {
-		importsEnd++
-	}
-
-	reordered := make([]ast.Decl, 0, len(file.Decls))
-	reordered = append(reordered, file.Decls[:importsEnd]...)
-
-	for _, decl := range file.Decls[importsEnd:] {
-		if isTypeDecl(decl) {
-			reordered = append(reordered, decl)
-		}
-	}
-
-	for _, decl := range file.Decls[importsEnd:] {
-		if !isTypeDecl(decl) {
-			reordered = append(reordered, decl)
-		}
-	}
-
-	file.Decls = reordered
+	file.Decls = desired
 
 	var out bytes.Buffer
 
@@ -629,15 +620,207 @@ func reorderTypeDecls(filename string, src []byte) ([]byte, bool, error) {
 	return out.Bytes(), true, nil
 }
 
-func hasOutOfOrderTypeDecls(file *ast.File) bool {
-	seenNonType := false
+func embedAdjacencyViolations(file *ast.File, fset *token.FileSet, filename string) []rules.Violation {
+	var violations []rules.Violation
 
-	for _, decl := range file.Decls {
-		if isImportDecl(decl) {
+	for decl, group := range embedDirectiveMatches(file) {
+		commentEndLine := fset.Position(group.End()).Line
+		declLine := fset.Position(decl.Pos()).Line
+
+		if declLine == commentEndLine+1 {
 			continue
 		}
 
-		if isTypeDecl(decl) {
+		violations = append(violations, rules.Violation{
+			Rule:    "spacing",
+			File:    filename,
+			Line:    declLine,
+			Message: "go:embed directives must remain immediately above the following var declaration",
+		})
+	}
+
+	return violations
+}
+
+func topLevelDeclBlocks(file *ast.File) []declBlock {
+	matches := embedDirectiveMatches(file)
+	blocks := make([]declBlock, 0, len(file.Decls))
+
+	for _, decl := range file.Decls {
+		block := declBlock{
+			decl:         decl,
+			effectivePos: decl.Pos(),
+		}
+
+		if group, ok := matches[decl]; ok && group.Pos() < block.effectivePos {
+			block.effectivePos = group.Pos()
+			block.anchored = true
+		}
+
+		blocks = append(blocks, block)
+	}
+
+	slices.SortStableFunc(blocks, func(a declBlock, b declBlock) int {
+		switch {
+		case a.effectivePos < b.effectivePos:
+			return -1
+		case a.effectivePos > b.effectivePos:
+			return 1
+		default:
+			return 0
+		}
+	})
+
+	return blocks
+}
+
+func desiredDeclOrder(file *ast.File) []ast.Decl {
+	blocks := topLevelDeclBlocks(file)
+	importsEnd := 0
+
+	for importsEnd < len(blocks) && isImportDecl(blocks[importsEnd].decl) {
+		importsEnd++
+	}
+
+	reordered := make([]ast.Decl, 0, len(blocks))
+
+	for _, block := range blocks[:importsEnd] {
+		reordered = append(reordered, block.decl)
+	}
+
+	segment := make([]declBlock, 0, len(blocks)-importsEnd)
+	flush := func() {
+		for _, block := range segment {
+			if isTypeDecl(block.decl) {
+				reordered = append(reordered, block.decl)
+			}
+		}
+
+		for _, block := range segment {
+			if !isTypeDecl(block.decl) {
+				reordered = append(reordered, block.decl)
+			}
+		}
+
+		segment = segment[:0]
+	}
+
+	for _, block := range blocks[importsEnd:] {
+		if block.anchored {
+			flush()
+			reordered = append(reordered, block.decl)
+			continue
+		}
+
+		segment = append(segment, block)
+	}
+
+	flush()
+
+	return reordered
+}
+
+func declOrdersEqual(current []ast.Decl, desired []ast.Decl) bool {
+	if len(current) != len(desired) {
+		return false
+	}
+
+	for i := range current {
+		if current[i] != desired[i] {
+			return false
+		}
+	}
+
+	return true
+}
+
+func embedDirectiveMatches(file *ast.File) map[ast.Decl]*ast.CommentGroup {
+	matches := map[ast.Decl]*ast.CommentGroup{}
+	docGroups := map[*ast.CommentGroup]struct{}{}
+	varDecls := topLevelVarDecls(file)
+
+	for _, decl := range varDecls {
+		genDecl, ok := decl.(*ast.GenDecl)
+
+		if !ok || genDecl.Doc == nil || !containsEmbedDirective(genDecl.Doc) {
+			continue
+		}
+
+		matches[decl] = genDecl.Doc
+		docGroups[genDecl.Doc] = struct{}{}
+	}
+
+	for _, group := range file.Comments {
+		if !containsEmbedDirective(group) {
+			continue
+		}
+
+		if _, ok := docGroups[group]; ok {
+			continue
+		}
+
+		if decl, ok := nextTopLevelVarDeclAfter(varDecls, group.End()); ok {
+			if _, seen := matches[decl]; !seen {
+				matches[decl] = group
+			}
+		}
+	}
+
+	return matches
+}
+
+func topLevelVarDecls(file *ast.File) []ast.Decl {
+	var decls []ast.Decl
+
+	for _, decl := range file.Decls {
+		genDecl, ok := decl.(*ast.GenDecl)
+
+		if ok && genDecl.Tok == token.VAR {
+			decls = append(decls, decl)
+		}
+	}
+
+	return decls
+}
+
+func nextTopLevelVarDeclAfter(decls []ast.Decl, pos token.Pos) (ast.Decl, bool) {
+	for _, decl := range decls {
+		if decl.Pos() > pos {
+			return decl, true
+		}
+	}
+
+	return nil, false
+}
+
+func containsEmbedDirective(group *ast.CommentGroup) bool {
+	if group == nil {
+		return false
+	}
+
+	for _, comment := range group.List {
+		if strings.HasPrefix(strings.TrimSpace(comment.Text), "//go:embed ") {
+			return true
+		}
+	}
+
+	return false
+}
+
+func hasOutOfOrderTypeDecls(file *ast.File) bool {
+	seenNonType := false
+
+	for _, block := range topLevelDeclBlocks(file) {
+		if isImportDecl(block.decl) {
+			continue
+		}
+
+		if block.anchored {
+			seenNonType = false
+			continue
+		}
+
+		if isTypeDecl(block.decl) {
 			if seenNonType {
 				return true
 			}
@@ -649,6 +832,52 @@ func hasOutOfOrderTypeDecls(file *ast.File) bool {
 	}
 
 	return false
+}
+
+func collapseEmbedSpacing(src []byte) []byte {
+	lines := bytes.Split(src, []byte{'\n'})
+	out := make([][]byte, 0, len(lines))
+
+	for i := 0; i < len(lines); i++ {
+		out = append(out, lines[i])
+
+		if i+2 >= len(lines) {
+			continue
+		}
+
+		if !bytes.HasPrefix(bytes.TrimSpace(lines[i]), []byte("//go:embed ")) {
+			continue
+		}
+
+		if len(bytes.TrimSpace(lines[i+1])) != 0 {
+			continue
+		}
+
+		next := bytes.TrimSpace(lines[i+2])
+
+		if isVarDeclStart(next) {
+			i++
+		}
+	}
+
+	return bytes.Join(out, []byte{'\n'})
+}
+
+func isVarDeclStart(line []byte) bool {
+	if !bytes.HasPrefix(line, []byte("var")) {
+		return false
+	}
+
+	if len(line) == len("var") {
+		return true
+	}
+
+	switch line[len("var")] {
+	case ' ', '\t', '\n', '\r', '\f', '\v', '(':
+		return true
+	default:
+		return false
+	}
 }
 
 func buildLineStarts(src []byte) []int {

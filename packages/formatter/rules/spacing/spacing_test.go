@@ -1040,6 +1040,99 @@ func run() {
 	}
 }
 
+func TestApplyRepairsDetachedGoEmbedDirective(t *testing.T) {
+	path := writeTempGoFile(t, `package sample
+
+import "embed"
+
+//go:embed foo.txt
+
+type runtime struct{}
+
+var rootTemplateFS embed.FS
+`)
+
+	violations, formatted, err := New().Apply(path, mustReadFile(t, path))
+
+	if err != nil {
+		t.Fatalf("apply: %v", err)
+	}
+
+	if len(violations) != 1 {
+		t.Fatalf("expected 1 violation, got %d", len(violations))
+	}
+
+	expected := `package sample
+
+import "embed"
+
+//go:embed foo.txt
+var rootTemplateFS embed.FS
+
+type runtime struct{}
+`
+
+	if string(formatted) != expected {
+		t.Fatalf("expected repaired go:embed placement, got:\n%s", formatted)
+	}
+}
+
+func TestApplyKeepsAttachedGoEmbedDirectiveUnchanged(t *testing.T) {
+	path := writeTempGoFile(t, `package sample
+
+import "embed"
+
+//go:embed foo.txt
+var rootTemplateFS embed.FS
+
+type runtime struct{}
+`)
+
+	original := string(mustReadFile(t, path))
+	violations, formatted, err := New().Apply(path, []byte(original))
+
+	if err != nil {
+		t.Fatalf("apply: %v", err)
+	}
+
+	if len(violations) != 0 {
+		t.Fatalf("expected 0 violations, got %d", len(violations))
+	}
+
+	if string(formatted) != original {
+		t.Fatalf("expected unchanged output, got:\n%s", formatted)
+	}
+}
+
+func TestApplyReordersTypesWithoutEmbedDirective(t *testing.T) {
+	path := writeTempGoFile(t, `package sample
+
+import "fmt"
+
+var defaultName = "ok"
+
+type config struct{}
+
+func run() {
+	fmt.Println(defaultName)
+}
+`)
+
+	violations, formatted, err := New().Apply(path, mustReadFile(t, path))
+
+	if err != nil {
+		t.Fatalf("apply: %v", err)
+	}
+
+	if len(violations) != 1 {
+		t.Fatalf("expected 1 violation, got %d", len(violations))
+	}
+
+	if !strings.Contains(string(formatted), "type config struct{}\n\nvar defaultName = \"ok\"") {
+		t.Fatalf("expected type declaration reorder, got:\n%s", formatted)
+	}
+}
+
 func TestApplyFormatsBlankLinesAroundGenericSelectorCalls(t *testing.T) {
 	path := writeTempGoFile(t, `package sample
 

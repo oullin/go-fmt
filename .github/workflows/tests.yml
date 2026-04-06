@@ -47,6 +47,8 @@ jobs:
               with:
                   go-version-file: packages/orchestrator/go.mod
                   cache-dependency-path: |
+                      go.work
+                      packages/correctness/go.mod
                       packages/semantic/go.sum
                       packages/orchestrator/go.sum
 
@@ -69,6 +71,8 @@ jobs:
               with:
                   go-version-file: packages/orchestrator/go.mod
                   cache-dependency-path: |
+                      go.work
+                      packages/correctness/go.mod
                       packages/semantic/go.sum
                       packages/orchestrator/go.sum
 

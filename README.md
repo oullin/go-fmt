@@ -33,9 +33,10 @@ curl -o go-fmt.compose.yaml https://raw.githubusercontent.com/oullin/go-fmt/main
 
 docker compose -f go-fmt.compose.yaml run --rm go-fmt check .
 docker compose -f go-fmt.compose.yaml run --rm go-fmt format .
+docker compose -f go-fmt.compose.yaml run --rm go-fmt format ./core ./demo/api
 ```
 
-This is the recommended integration path. It keeps the command short, the container configuration reusable, and the toolchain identical across machines and CI. When the mounted project contains a Go module or workspace, both `check` and `format` also run `go vet ./...` automatically.
+This is the recommended integration path. It keeps the command short, the container configuration reusable, and the toolchain identical across machines and CI. The Compose file mounts your project at `/work`, keeps Go build and module caches in the shared Docker volume `go-fmt-cache`, and avoids writing `storage/.cache` into consumer repositories. When the mounted project contains a Go module or workspace, both `check` and `format` also run `go vet ./...` automatically.
 
 ### Local install
 
@@ -129,6 +130,12 @@ go-fmt check .
 # fix the current tree
 go-fmt format .
 
+# check multiple paths
+go-fmt check ./core ./demo/api
+
+# format multiple paths
+go-fmt format ./core ./demo/api
+
 # check with JSON output
 go-fmt check --format json .
 
@@ -141,6 +148,8 @@ go-fmt check ./packages/semantic/rules/spacing/spacing.go
 # check a host path mounted by the consumer Compose file
 go-fmt check --host-path /absolute/host/project/pkg/api
 ```
+
+Use positional paths when you need to target multiple files or directories. `--host-path` accepts one host path per invocation.
 
 The stand-alone CLI formats Go source only. Repository-local `make format` also runs Oxc formatting for supported non-Go files through the `support` workspace.
 
@@ -158,14 +167,17 @@ services:
         image: ghcr.io/oullin/go-fmt:latest
         working_dir: /work
         volumes:
-            - ${PWD}:/work
+            - ${GO_FMT_PROJECT_DIR:-${PWD}}:/work
+            - go-fmt-cache:/cache
         environment:
-            HOST_PROJECT_PATH: ${PWD}
-            GOCACHE: /work/storage/.cache/go-build
-            GOPATH: /work/storage/.cache/gopath
-            GOMODCACHE: /work/storage/.cache/gopath/pkg/mod
-            TURBO_CACHE_DIR: /work/storage/.cache/turbo
+            HOST_PROJECT_PATH: ${GO_FMT_PROJECT_DIR:-${PWD}}
+            GOCACHE: /cache/go-build
+            GOPATH: /cache/gopath
+            GOMODCACHE: /cache/gopath/pkg/mod
         command: ['help']
+volumes:
+    go-fmt-cache:
+        name: go-fmt-cache
 ```
 
 Download it into your project:
@@ -179,6 +191,7 @@ Then run:
 ```bash
 docker compose -f go-fmt.compose.yaml run --rm go-fmt check .
 docker compose -f go-fmt.compose.yaml run --rm go-fmt format .
+docker compose -f go-fmt.compose.yaml run --rm go-fmt format ./core ./demo/api
 ```
 
 ### Why Compose is the default recommendation
@@ -186,8 +199,14 @@ docker compose -f go-fmt.compose.yaml run --rm go-fmt format .
 - The command stays short once the file is in the project
 - The image tag and mount setup are reusable across a team
 - `HOST_PROJECT_PATH` enables `--host-path` for mounted subtrees
-- Repo-managed caches stay under `storage/.cache`
+- Go build and module caches persist in the shared Docker volume `go-fmt-cache`
 - The same setup works well in local dev and CI
+
+Remove the shared cache when you want a completely cold start:
+
+```bash
+docker volume rm go-fmt-cache
+```
 
 ### Existing project-local Compose files
 
@@ -200,20 +219,21 @@ docker compose -f api/docker.api.compose.yaml run --rm go-fmt format .
 
 ### Shared Compose files
 
-If the Compose file lives outside the project you want to format, pass `--project-directory "$PWD"` so the current project is mounted instead of the directory that stores the Compose file:
+If the Compose file lives outside the project you want to format, set `GO_FMT_PROJECT_DIR` to the project root you want mounted at `/work`:
 
 ```bash
-docker compose -f /path/to/go-fmt.compose.yaml --project-directory "$PWD" run --rm go-fmt check .
-docker compose -f /path/to/go-fmt.compose.yaml --project-directory "$PWD" run --rm go-fmt format .
+GO_FMT_PROJECT_DIR="$PWD" docker compose -f /path/to/go-fmt.compose.yaml run --rm go-fmt check .
+GO_FMT_PROJECT_DIR="$PWD" docker compose -f /path/to/go-fmt.compose.yaml run --rm go-fmt format .
+GO_FMT_PROJECT_DIR="$PWD" docker compose -f /path/to/go-fmt.compose.yaml run --rm go-fmt format ./core ./demo/api
 ```
 
-To target a mounted subdirectory with `--host-path`:
+To target a mounted subdirectory with `--host-path`, pass one host path per invocation:
 
 ```bash
-docker compose -f /path/to/go-fmt.compose.yaml --project-directory "$PWD" run --rm go-fmt format --host-path "$PWD/pkg/api"
+GO_FMT_PROJECT_DIR="$PWD" docker compose -f /path/to/go-fmt.compose.yaml run --rm go-fmt format --host-path "$PWD/pkg/api"
 ```
 
-Paths outside the caller's current directory are intentionally rejected.
+Use positional paths such as `./core ./demo/api` when you need multiple targets. Paths outside `GO_FMT_PROJECT_DIR` are intentionally rejected.
 
 ### One-off container usage
 

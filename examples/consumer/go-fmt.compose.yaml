@@ -3,11 +3,15 @@ services:
         image: ghcr.io/oullin/go-fmt:latest
         working_dir: /work
         volumes:
-            - ${PWD}:/work
+            - ${GO_FMT_PROJECT_DIR:-${PWD}}:/work
+            - go-fmt-cache:/cache
         environment:
-            HOST_PROJECT_PATH: ${PWD}
-            GOCACHE: /work/storage/.cache/go-build
-            GOPATH: /work/storage/.cache/gopath
-            GOMODCACHE: /work/storage/.cache/gopath/pkg/mod
-            TURBO_CACHE_DIR: /work/storage/.cache/turbo
+            HOST_PROJECT_PATH: ${GO_FMT_PROJECT_DIR:-${PWD}}
+            GOCACHE: /cache/go-build
+            GOPATH: /cache/gopath
+            GOMODCACHE: /cache/gopath/pkg/mod
         command: ['help']
+
+volumes:
+    go-fmt-cache:
+        name: go-fmt-cache

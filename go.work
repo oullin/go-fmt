@@ -1,8 +1,7 @@
 go 1.25.0
 
 use (
-	./packages/correctness
-	./packages/orchestrator
-	./packages/semantic
-	./packages/testutil
+	./packages/vet
+	./packages/driver
+	./packages/formatter
 )

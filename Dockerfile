@@ -7,19 +7,19 @@ ARG VERSION=dev
 WORKDIR /src
 
 COPY go.work /src/go.work
-COPY packages/semantic/go.mod packages/semantic/go.sum /src/packages/semantic/
-COPY packages/orchestrator/go.mod packages/orchestrator/go.sum /src/packages/orchestrator/
-COPY packages/correctness/go.mod /src/packages/correctness/
+COPY packages/formatter/go.mod packages/formatter/go.sum /src/packages/formatter/
+COPY packages/driver/go.mod packages/driver/go.sum /src/packages/driver/
+COPY packages/vet/go.mod /src/packages/vet/
 
-RUN go -C /src/packages/semantic mod download
-RUN go -C /src/packages/orchestrator mod download
+RUN go -C /src/packages/formatter mod download
+RUN go -C /src/packages/driver mod download
 
 COPY . .
 
 RUN bash -lc 'source /src/scripts/env.sh && assert_no_legacy_artifacts'
 
 RUN CGO_ENABLED=0 GOOS=${TARGETOS} GOARCH=${TARGETARCH} \
-	go -C /src/packages/orchestrator build -trimpath -ldflags="-s -w -X main.version=${VERSION}" -o /out/go-fmt ./cmd/fmt
+	go -C /src/packages/driver build -trimpath -ldflags="-s -w -X main.version=${VERSION}" -o /out/go-fmt ./cmd/fmt
 
 RUN CGO_ENABLED=0 GOOS=${TARGETOS} GOARCH=${TARGETARCH} \
 	go build -trimpath -ldflags="-s -w" -o /out/gofmt cmd/gofmt

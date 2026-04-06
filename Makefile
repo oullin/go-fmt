@@ -3,7 +3,7 @@ SHELL := /bin/bash
 
 APP := go-fmt
 CMD := ./cmd/fmt
-GO_WORKDIR := packages/orchestrator
+GO_WORKDIR := packages/driver
 OXFMT_BIN := packages/support/node_modules/.bin/oxfmt
 
 ARGS ?= . ## With '.', format changed tracked/untracked files first, then widen semantic formatting if needed; set a path to target a specific subtree
@@ -39,13 +39,13 @@ test: ## Run all tests with verbose output
 
 test-race: ## Run all tests with the race detector
 	@# Run Go tests with race detection enabled for concurrency-sensitive changes.
-	for dir in packages/semantic packages/correctness packages/orchestrator; do \
+	for dir in packages/formatter packages/vet packages/driver; do \
 		./scripts/with-storage-env.sh go -C $$dir test ./... -race -v; \
 	done
 
 test-short: ## Run tests in short mode
 	@# Run the fast Go test subset intended for quick local verification.
-	for dir in packages/semantic packages/correctness packages/orchestrator; do \
+	for dir in packages/formatter packages/vet packages/driver; do \
 		./scripts/with-storage-env.sh go -C $$dir test ./... -short; \
 	done
 
@@ -65,4 +65,4 @@ clean: ## Remove build artifacts and clean the Go cache
 	@# Remove storage-managed binaries, release outputs, and caches.
 	rm -rf $(BUILD_DIR) $(DIST_DIR) $(DIST_TEST_DIR) storage/.cache
 	@# Remove workspace dependency installs.
-	rm -rf node_modules packages/support/node_modules packages/semantic/node_modules packages/correctness/node_modules packages/orchestrator/node_modules
+	rm -rf node_modules packages/support/node_modules packages/formatter/node_modules packages/vet/node_modules packages/driver/node_modules

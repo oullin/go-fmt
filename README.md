@@ -1,26 +1,26 @@
 # go-fmt
 
-[![Go Reference](https://pkg.go.dev/badge/github.com/oullin/go-fmt/packages/orchestrator.svg)](https://pkg.go.dev/github.com/oullin/go-fmt/packages/orchestrator)
+[![Go Reference](https://pkg.go.dev/badge/github.com/oullin/go-fmt/packages/driver.svg)](https://pkg.go.dev/github.com/oullin/go-fmt/packages/driver)
 [![Go 1.25](https://img.shields.io/badge/go-1.25-00ADD8?logo=go&logoColor=white)](https://go.dev/doc/go1.25)
 [![Tests](https://github.com/oullin/go-fmt/actions/workflows/tests.yml/badge.svg)](https://github.com/oullin/go-fmt/actions/workflows/tests.yml)
 [![Release](https://github.com/oullin/go-fmt/actions/workflows/release.yml/badge.svg)](https://github.com/oullin/go-fmt/actions/workflows/release.yml)
 [![Codecov](https://codecov.io/gh/oullin/go-fmt/graph/badge.svg?branch=main)](https://codecov.io/gh/oullin/go-fmt)
 [![Docker](https://img.shields.io/badge/docker-ghcr.io%2Foullin%2Fgo--fmt-2496ED?logo=docker&logoColor=white)](https://github.com/oullin/go-fmt/pkgs/container/go-fmt)
 
-**Semantic formatting for Go, with a Docker Compose-first workflow.**
+**Rule-driven formatting for Go, with a Docker Compose-first workflow.**
 
-`go-fmt` fixes layout and structure that `gofmt` does not touch, then finishes with `gofmt` and `goimports`. The result is a single command that can check or rewrite Go code with consistent semantic spacing, automatic `go vet` validation, predictable output, and a clean path for local use, CI, or container-based workflows.
+`go-fmt` fixes layout and structure that `gofmt` does not touch, then finishes with `gofmt` and `goimports`. The result is a single command that can check or rewrite Go code with consistent rule-driven formatting, automatic `go vet` validation, predictable output, and a clean path for local use, CI, or container-based workflows.
 
 **Quick links:** [Quick Start](#quick-start) · [Installation](#installation) · [CLI](#cli) · [Docker](#docker) · [Configuration](#configuration) · [Spacing Rule](#spacing-rule) · [Development](#development)
 
 ## Why go-fmt
 
-- Adds semantic formatting on top of `gofmt`, not just whitespace cleanup
+- Adds formatter rules on top of `gofmt`, not just whitespace cleanup
 - Runs rules first, then `gofmt` and `goimports` for a deterministic result
 - Runs `go vet ./...` automatically when the current working directory is inside a Go module or workspace
 - Works as a local CLI or a reusable Docker Compose service
 - Supports `text`, `json`, and `agent` output modes
-- Can also be embedded from the Go engine in `packages/semantic/engine`
+- Can also be embedded from the Go engine in `packages/formatter/engine`
 
 ## Quick Start
 
@@ -41,7 +41,7 @@ This is the recommended integration path. It keeps the command short, the contai
 ### Local install
 
 ```bash
-go install github.com/oullin/go-fmt/packages/orchestrator/cmd/fmt@latest
+go install github.com/oullin/go-fmt/packages/driver/cmd/fmt@latest
 
 fmt version
 fmt check .
@@ -61,7 +61,7 @@ export PATH="$(go env GOPATH)/bin:$PATH"
 Requires Go 1.25 or newer.
 
 ```bash
-go install github.com/oullin/go-fmt/packages/orchestrator/cmd/fmt@latest
+go install github.com/oullin/go-fmt/packages/driver/cmd/fmt@latest
 fmt version
 ```
 
@@ -86,8 +86,8 @@ fmt version
 No install is required when working inside this repository:
 
 ```bash
-./scripts/with-storage-env.sh go -C packages/orchestrator run ./cmd/fmt check .
-./scripts/with-storage-env.sh go -C packages/orchestrator run ./cmd/fmt format .
+./scripts/with-storage-env.sh go -C packages/driver run ./cmd/fmt check .
+./scripts/with-storage-env.sh go -C packages/driver run ./cmd/fmt format .
 ```
 
 ### One-off Docker run
@@ -143,7 +143,7 @@ go-fmt check --format json .
 go-fmt check --format agent .
 
 # check a single file
-go-fmt check ./packages/semantic/rules/spacing/spacing.go
+go-fmt check ./packages/formatter/rules/spacing/spacing.go
 
 # check a host path mounted by the consumer Compose file
 go-fmt check --host-path /absolute/host/project/pkg/api
@@ -256,9 +256,8 @@ rules:
     spacing:
         enabled: true
 
-correctness:
-    vet:
-        enabled: true
+vet:
+    enabled: true
 
 formatters:
     gofmt: true
@@ -276,19 +275,19 @@ not_name:
     - '*.pb.go'
 ```
 
-| Field                     | Type | Default                          | Description                                 |
-| ------------------------- | ---- | -------------------------------- | ------------------------------------------- |
-| `rules.spacing.enabled`   | bool | `true`                           | Enable or disable the spacing rule          |
-| `correctness.vet.enabled` | bool | `true`                           | Run or skip automatic `go vet ./...`        |
-| `formatters.gofmt`        | bool | `true`                           | Run `gofmt` after semantic rules            |
-| `formatters.goimports`    | bool | `true`                           | Run `goimports` after `gofmt`               |
-| `exclude`                 | list | `.git`, `node_modules`, `vendor` | Directory names to skip during tree walking |
-| `not_path`                | list | Empty                            | Substring matches against full file paths   |
-| `not_name`                | list | Empty                            | Glob patterns matched against file names    |
+| Field                   | Type | Default                          | Description                                 |
+| ----------------------- | ---- | -------------------------------- | ------------------------------------------- |
+| `rules.spacing.enabled` | bool | `true`                           | Enable or disable the spacing rule          |
+| `vet.enabled`           | bool | `true`                           | Run or skip automatic `go vet ./...`        |
+| `formatters.gofmt`      | bool | `true`                           | Run `gofmt` after formatter rules           |
+| `formatters.goimports`  | bool | `true`                           | Run `goimports` after `gofmt`               |
+| `exclude`               | list | `.git`, `node_modules`, `vendor` | Directory names to skip during tree walking |
+| `not_path`              | list | Empty                            | Substring matches against full file paths   |
+| `not_name`              | list | Empty                            | Glob patterns matched against file names    |
 
 ## Spacing Rule
 
-The built-in `spacing` rule is AST-based. It enforces semantic blank-line boundaries and declaration ordering before standard formatters run.
+The built-in `spacing` rule is AST-based. It enforces blank-line boundaries and declaration ordering before standard formatters run.
 
 It also inserts a blank line after anonymous-function assignments such as `name := func(...) { ... }`, `name = func(...) { ... }`, and `var name = func(...) { ... }` when another statement follows immediately.
 
@@ -578,7 +577,7 @@ Start with `make help` to see the available repository tasks and override variab
 
 ```bash
 make help
-pnpm turbo run check --filter=semantic
+pnpm turbo run check --filter=formatter
 pnpm turbo run check --filter=support
 make format
 make build
@@ -617,7 +616,7 @@ Repository-managed caches and generated binaries are expected under `storage/`, 
 
 The release workflow:
 
-- runs checks for both workspaces
+- runs checks for all workspaces
 - runs Go tests with the race detector
 - creates the next Git tag when `main` advances
 - publishes the GitHub release from that immutable tag
@@ -631,10 +630,10 @@ The release workflow:
 ## Package Layout
 
 ```text
-packages/orchestrator/     Stand-alone Go CLI entrypoint, config loading, report rendering
-packages/correctness/      Correctness planner and automatic go vet execution
-packages/semantic/         Semantic planning, engine, rules, and formatters
-packages/support/          Oxc-based formatting for supported non-Go file types
+packages/driver/      Stand-alone Go CLI entrypoint, config loading, report rendering
+packages/vet/         Vet planning and automatic go vet execution
+packages/formatter/   Formatter planning, engine, rules, and formatters
+packages/support/     Oxc-based formatting for supported non-Go file types
 ```
 
 ### Formatting pipeline

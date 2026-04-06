@@ -581,6 +581,7 @@ func typeOrderViolations(file *ast.File, fset *token.FileSet, filename string) [
 
 		if block.anchored {
 			seenNonType = false
+
 			continue
 		}
 
@@ -804,6 +805,7 @@ func desiredDeclOrder(file *ast.File) []ast.Decl {
 		if block.anchored {
 			flush()
 			reordered = append(reordered, block.decl)
+
 			continue
 		}
 
@@ -926,6 +928,7 @@ func hasOutOfOrderTypeDecls(file *ast.File) bool {
 
 		if block.anchored {
 			seenNonType = false
+
 			continue
 		}
 

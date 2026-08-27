@@ -6,7 +6,7 @@
 	},
 	"ignorePatterns": ["tools/oxlint/anti-slop/**"],
 	"rules": {
-		"complexity": ["error", { "max": 20, "variant": "classic" }],
+		"complexity": ["error", { "max": 12, "variant": "classic" }],
 		"eqeqeq": ["error", "always"],
 		"max-depth": ["error", { "max": 4 }],
 		"max-lines": ["error", { "max": 450, "skipBlankLines": true, "skipComments": false }],

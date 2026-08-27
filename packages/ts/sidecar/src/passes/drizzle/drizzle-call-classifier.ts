@@ -269,34 +269,23 @@ export class DrizzleCallClassifier {
 		}
 
 		if (current.type === 'MemberExpression') {
-			const object = this.#ast.childNode(current, 'object');
-			const property = this.#propertyName(current);
-
-			if (property === 'query') {
-				return this.#isDrizzleReceiver(object, imports);
-			}
-
-			return this.#isDrizzleReceiver(object, imports);
+			return this.#isDrizzleReceiver(this.#ast.childNode(current, 'object'), imports);
 		}
 
-		if (current.type === 'CallExpression') {
-			const callee = this.#ast.unwrapChainExpression(this.#ast.childNode(current, 'callee'));
+		return current.type === 'CallExpression' && this.#isDrizzleCallReceiver(current, imports);
+	}
 
-			if (callee?.type === 'Identifier') {
-				const imported = this.calleeName(callee, imports);
+	#isDrizzleCallReceiver(call: Node, imports: DrizzleImports): boolean {
+		const callee = this.#ast.unwrapChainExpression(this.#ast.childNode(call, 'callee'));
 
-				return Boolean(imported && this.#vocabulary.isSetOperation(imported));
-			}
+		if (callee?.type === 'Identifier') {
+			const imported = this.calleeName(callee, imports);
 
-			if (callee?.type === 'MemberExpression') {
-				const method = this.#propertyName(callee);
+			return Boolean(imported && this.#vocabulary.isSetOperation(imported));
+		}
 
-				if (method && this.#vocabulary.isChainMethod(method)) {
-					return this.#isDrizzleReceiver(this.#ast.childNode(callee, 'object'), imports);
-				}
-
-				return this.#isDrizzleReceiver(this.#ast.childNode(callee, 'object'), imports);
-			}
+		if (callee?.type === 'MemberExpression') {
+			return this.#isDrizzleReceiver(this.#ast.childNode(callee, 'object'), imports);
 		}
 
 		return false;

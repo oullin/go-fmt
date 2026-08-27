@@ -7,6 +7,12 @@ import type { FormattingPass } from '#sidecar/passes/pass';
 import type { Node } from '#sidecar/syntax/node-schema';
 import type { SourceDocument } from '#sidecar/syntax/source-document';
 
+type MemberGroups = {
+	readonly properties: Node[];
+	readonly constructors: Node[];
+	readonly methods: Node[];
+};
+
 /** Reorders class members into the formatter's stable class shape. */
 export class ClassReorderPass implements FormattingPass {
 	/** The pass identity used for reporting. */
@@ -62,29 +68,10 @@ export class ClassReorderPass implements FormattingPass {
 			return null;
 		}
 
-		const properties: Node[] = [];
-		const constructors: Node[] = [];
-		const methods: Node[] = [];
+		const groups = this.#groupMembers(members);
+		const desired = [...groups.properties, ...groups.constructors, ...groups.methods];
 
-		for (const member of members) {
-			const kind = this.#members.classify(member);
-
-			if (kind === 'property') {
-				properties.push(member);
-			} else if (kind === 'constructor') {
-				constructors.push(member);
-			} else {
-				methods.push(member);
-			}
-		}
-
-		const desired = [...properties, ...constructors, ...methods];
-
-		if (
-			desired.every((member, index) => {
-				return member === members[index];
-			})
-		) {
+		if (this.#alreadyOrdered(members, desired)) {
 			return null;
 		}
 
@@ -120,6 +107,30 @@ export class ClassReorderPass implements FormattingPass {
 			end: bodyEnd - 1,
 			replacement: `\n${indent}${memberSlices.join(`\n${indent}`)}${closing}`,
 		};
+	}
+
+	#groupMembers(members: Node[]): MemberGroups {
+		const groups: MemberGroups = { properties: [], constructors: [], methods: [] };
+
+		for (const member of members) {
+			const kind = this.#members.classify(member);
+
+			if (kind === 'property') {
+				groups.properties.push(member);
+			} else if (kind === 'constructor') {
+				groups.constructors.push(member);
+			} else {
+				groups.methods.push(member);
+			}
+		}
+
+		return groups;
+	}
+
+	#alreadyOrdered(members: Node[], desired: Node[]): boolean {
+		return desired.every((member, index) => {
+			return member === members[index];
+		});
 	}
 
 	#hasCommentsAroundMembers(source: string, body: Node, members: Node[]): boolean {

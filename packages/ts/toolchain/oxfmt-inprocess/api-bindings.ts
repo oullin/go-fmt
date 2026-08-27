@@ -1,5 +1,5 @@
 import { ApiExportMissing, WorkerImportUnrecognised } from '#oxfmt-inprocess/errors';
-import { err, ok } from '#oxfmt-inprocess/result';
+import { err, isErr, ok } from '#oxfmt-inprocess/result';
 import type { Result } from '#oxfmt-inprocess/result';
 
 /** How oxfmt's worker entry imports the functions the shim delegates to. */
@@ -62,31 +62,16 @@ export class ApiBindings {
 			return err(new WorkerImportUnrecognised(workerPath, 'the API import carries no bindings'));
 		}
 
-		const exportsByRole = new Map<string, string>();
+		const parsedExports = this.#parseExports(bindingList, workerPath);
 
-		for (const binding of bindingList.split(',')) {
-			const trimmed = binding.trim();
-
-			// A trailing comma in the import splits into an empty last element.
-			if (trimmed === '') {
-				continue;
-			}
-
-			const parsed = BINDING.exec(trimmed);
-			const exported = parsed?.[1];
-
-			if (parsed === null || exported === undefined) {
-				return err(new WorkerImportUnrecognised(workerPath, `unexpected binding "${trimmed}"`));
-			}
-
-			// A bare binding is imported under its own name, so it is its own role.
-			exportsByRole.set(parsed[2] ?? exported, exported);
+		if (isErr(parsedExports)) {
+			return parsedExports;
 		}
 
-		const formatFile = exportsByRole.get('formatFile');
-		const formatEmbeddedCode = exportsByRole.get('formatEmbeddedCode');
-		const formatEmbeddedDoc = exportsByRole.get('formatEmbeddedDoc');
-		const sortTailwindClasses = exportsByRole.get('sortTailwindClasses');
+		const formatFile = parsedExports.value.get('formatFile');
+		const formatEmbeddedCode = parsedExports.value.get('formatEmbeddedCode');
+		const formatEmbeddedDoc = parsedExports.value.get('formatEmbeddedDoc');
+		const sortTailwindClasses = parsedExports.value.get('sortTailwindClasses');
 
 		if (formatFile === undefined) {
 			return err(new ApiExportMissing('formatFile', workerPath));
@@ -105,6 +90,29 @@ export class ApiBindings {
 		}
 
 		return ok(new ApiBindings(moduleSpecifier, formatFile, formatEmbeddedCode, formatEmbeddedDoc, sortTailwindClasses));
+	}
+
+	static #parseExports(bindingList: string, workerPath: string): Result<Map<string, string>, WorkerImportUnrecognised> {
+		const exportsByRole = new Map<string, string>();
+
+		for (const binding of bindingList.split(',')) {
+			const trimmed = binding.trim();
+
+			if (trimmed === '') {
+				continue;
+			}
+
+			const parsed = BINDING.exec(trimmed);
+			const exported = parsed?.[1];
+
+			if (parsed === null || exported === undefined) {
+				return err(new WorkerImportUnrecognised(workerPath, `unexpected binding "${trimmed}"`));
+			}
+
+			exportsByRole.set(parsed[2] ?? exported, exported);
+		}
+
+		return ok(exportsByRole);
 	}
 
 	/** The module specifier the API functions are imported from. */

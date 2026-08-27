@@ -59,7 +59,7 @@ export class StatementSpacingPolicy {
 	 * @returns `true` when the pair must be separated by a blank line.
 	 */
 	needsBlankLine(previous: Node, next: Node): boolean {
-		if (this.#containsAwait(previous) || this.#containsAwait(next) || this.#needsBlankLineAbove(next)) {
+		if (this.#hasContentBoundary(previous, next)) {
 			return true;
 		}
 
@@ -67,7 +67,7 @@ export class StatementSpacingPolicy {
 			return !this.#isStructuredPreviousStatement(previous);
 		}
 
-		if (this.#members.isMethodPair(previous, next) || this.#members.isPropertyToMethodTransition(previous, next) || this.#isTypeDeclarationAbove(previous)) {
+		if (this.#hasMemberBoundary(previous, next)) {
 			return true;
 		}
 
@@ -88,6 +88,14 @@ export class StatementSpacingPolicy {
 		}
 
 		return this.#blockHavingStatements.has(previous.type);
+	}
+
+	#hasContentBoundary(previous: Node, next: Node): boolean {
+		return this.#containsAwait(previous) || this.#containsAwait(next) || this.#needsBlankLineAbove(next);
+	}
+
+	#hasMemberBoundary(previous: Node, next: Node): boolean {
+		return this.#members.isMethodPair(previous, next) || this.#members.isPropertyToMethodTransition(previous, next) || this.#isTypeDeclarationAbove(previous);
 	}
 
 	#isExportWithDeclaration(node: Node): boolean {

@@ -113,13 +113,7 @@ export class FluentChainPass implements FormattingPass {
 			return null;
 		}
 
-		const separator = document.slice(objectEnd, propertyStart);
-
-		if (separator.includes('//') || separator.includes('/*')) {
-			return null;
-		}
-
-		const operator = separator.replace(/[ \t\r\n]/g, '');
+		const operator = document.slice(objectEnd, propertyStart).replace(/[ \t\r\n]/g, '');
 
 		if (operator !== '.' && operator !== '?.') {
 			return null;

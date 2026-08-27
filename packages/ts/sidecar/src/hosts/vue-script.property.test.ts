@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import fc from 'fast-check';
 import { VueScript } from '#sidecar/hosts/vue-script';
+import type { VueScriptBlock } from '#sidecar/hosts/vue-script';
 
 const vueScript = new VueScript();
 
@@ -17,6 +18,15 @@ type AttributeCase = {
 	readonly source: string;
 	readonly value: string | null;
 };
+
+function assertScript(document: string, block: VueScriptBlock | undefined, generated: GeneratedBlock | undefined): void {
+	assert.ok(block);
+	assert.ok(generated);
+	assert.equal(document.slice(block.start, block.start + block.content.length), block.content);
+	assert.equal(block.content, generated.content);
+	assert.equal(vueScript.attribute(block.openTag, 'lang'), generated.lang);
+	assert.equal(vueScript.isJavaScriptOrTypeScript(block.openTag), generated.javaScriptOrTypeScript);
+}
 
 const langAttributeArbitrary = fc.constantFrom<AttributeCase>(
 	{ source: '', value: null },
@@ -92,18 +102,7 @@ test('vueScript.extractBlocks preserves generated content offsets and language d
 			assert.equal(extracted.length, scripts.length);
 
 			for (let index = 0; index < extracted.length; index++) {
-				const block = extracted[index];
-				const generated = scripts[index];
-
-				assert.ok(block && generated);
-
-				assert.equal(document.slice(block?.start, (block?.start ?? 0) + (block?.content.length ?? 0)), block?.content);
-
-				assert.equal(block?.content, generated?.content);
-
-				assert.equal(vueScript.attribute(block?.openTag ?? '', 'lang'), generated?.lang);
-
-				assert.equal(vueScript.isJavaScriptOrTypeScript(block?.openTag ?? ''), generated?.javaScriptOrTypeScript);
+				assertScript(document, extracted[index], scripts[index]);
 			}
 		}),
 		{ numRuns: 100 },

@@ -22,6 +22,13 @@ type ScannedLine = {
 	readonly text: string;
 };
 
+type OpeningFence = {
+	readonly line: ScannedLine;
+	readonly fenceChar: string;
+	readonly fenceLength: number;
+	readonly info: string;
+};
+
 const OPEN_FENCE_REGEX = /^( {0,3})(`{3,}|~{3,})(.*)$/;
 const JAVASCRIPT_LANGS = ['ts', 'tsx', 'js', 'jsx', 'typescript', 'javascript', 'mjs', 'cjs', 'mts', 'cts'];
 
@@ -68,6 +75,28 @@ export class MarkdownFences {
 		return -1;
 	}
 
+	#openingFence(line: ScannedLine | undefined): OpeningFence | null {
+		if (!line) {
+			return null;
+		}
+
+		const match = OPEN_FENCE_REGEX.exec(line.text);
+
+		if (!match) {
+			return null;
+		}
+
+		const fence = match[2] ?? '';
+		const fenceChar = fence[0] ?? '`';
+		const info = match[3] ?? '';
+
+		if (fenceChar === '`' && info.includes('`')) {
+			return null;
+		}
+
+		return { line, fenceChar, fenceLength: fence.length, info };
+	}
+
 	/**
 	 * Extract every JavaScript-capable Markdown fence body and its source offset.
 	 *
@@ -86,36 +115,25 @@ export class MarkdownFences {
 		let index = 0;
 
 		while (index < lines.length) {
-			const opening = lines[index];
-			const match = opening ? OPEN_FENCE_REGEX.exec(opening.text) : null;
+			const opening = this.#openingFence(lines[index]);
 
-			if (!opening || !match) {
+			if (!opening) {
 				index++;
 
 				continue;
 			}
 
-			const fence = match[2] ?? '';
-			const fenceChar = fence[0] ?? '`';
-			const info = match[3] ?? '';
-
-			if (fenceChar === '`' && info.includes('`')) {
-				index++;
-
-				continue;
-			}
-
-			const closeIndex = this.#findClose(lines, index + 1, fenceChar, fence.length);
+			const closeIndex = this.#findClose(lines, index + 1, opening.fenceChar, opening.fenceLength);
 
 			if (closeIndex === -1) {
 				break;
 			}
 
-			const bodyStart = opening.end;
+			const bodyStart = opening.line.end;
 			const bodyEnd = lines[closeIndex]?.start ?? content.length;
 
 			blocks.push({
-				lang: this.#infoLanguage(info),
+				lang: this.#infoLanguage(opening.info),
 				content: content.slice(bodyStart, bodyEnd),
 				start: bodyStart,
 			});

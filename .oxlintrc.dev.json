@@ -44,6 +44,7 @@
 		"unicorn/prefer-string-slice": "error",
 		"unicorn/prefer-structured-clone": "error",
 		"unicorn/text-encoding-identifier-case": "error",
+		"anti-slop/no-ambient-nondeterminism": "off",
 		"anti-slop/no-chained-type-assertions": "error",
 		"anti-slop/no-conditional-empty-object-spread": "error",
 		"anti-slop/no-known-value-widening": "error",
@@ -66,6 +67,13 @@
 			"files": ["packages/ts/sidecar/src/cli/reporter.ts"],
 			"rules": {
 				"no-console": "off"
+			}
+		},
+		{
+			"files": ["packages/ts/sidecar/src/passes/**", "packages/ts/sidecar/src/pipeline/**", "packages/ts/sidecar/src/syntax/**", "packages/ts/sidecar/src/hosts/**"],
+			"excludeFiles": ["**/*.test.ts"],
+			"rules": {
+				"anti-slop/no-ambient-nondeterminism": "error"
 			}
 		}
 	]

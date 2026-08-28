@@ -1,5 +1,6 @@
 import { eslintCompatPlugin } from '@oxlint/plugins';
 
+import { noAmbientNondeterminismRule } from '#anti-slop/rules/no-ambient-nondeterminism';
 import { noChainedTypeAssertionsRule } from '#anti-slop/rules/no-chained-type-assertions';
 import { noConditionalEmptyObjectSpreadRule } from '#anti-slop/rules/no-conditional-empty-object-spread';
 import { noKnownValueWideningRule } from '#anti-slop/rules/no-known-value-widening';
@@ -22,6 +23,7 @@ const antiSlopPlugin = eslintCompatPlugin(
 	{
 		meta: { name: 'anti-slop' },
 		rules: {
+			'no-ambient-nondeterminism': noAmbientNondeterminismRule,
 			'no-chained-type-assertions': noChainedTypeAssertionsRule,
 			'no-conditional-empty-object-spread': noConditionalEmptyObjectSpreadRule,
 			'no-known-value-widening': noKnownValueWideningRule,

@@ -69,6 +69,31 @@ if ! diff <(printf '%s' "$expected_vue") app.vue; then
 	exit 1
 fi
 
+# Formatting must reach a fixed point. A pass that keeps rewriting already-formatted
+# source turns `format --check` into a permanent failure and makes every run a diff,
+# and the first pass alone cannot reveal it: the output above is correct either way.
+# `--fix` runs inside this pipeline too, so a fixer that oscillates lands here first.
+before_second="${tmp_root}/before-second"
+after_second="${tmp_root}/after-second"
+
+find . -type f -not -path './.git/*' -exec shasum {} + | sort > "$before_second"
+
+XDG_CACHE_HOME="${tmp_root}/cache" "$bin" format .
+
+find . -type f -not -path './.git/*' -exec shasum {} + | sort > "$after_second"
+
+if ! diff "$before_second" "$after_second"; then
+	printf 'format is not idempotent: a second pass over formatted source changed it\n' >&2
+	exit 1
+fi
+
+# `check` is the same pipeline reporting instead of writing, so it must agree that
+# the tree is settled. Disagreement means check and format apply different rules.
+if ! XDG_CACHE_HOME="${tmp_root}/cache" "$bin" check .; then
+	printf 'check reported changes on a tree format had just settled\n' >&2
+	exit 1
+fi
+
 # The lint step has to enforce the bundled .oxlintrc, typescript rules included.
 # This fails open, which is why it is worth a fixture: without the config oxlint
 # still runs and still exits 0, it just stops reporting anything the config

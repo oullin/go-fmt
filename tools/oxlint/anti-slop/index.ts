@@ -1,5 +1,6 @@
 import { eslintCompatPlugin } from '@oxlint/plugins';
 
+import { noAmbientNondeterminismRule } from '#anti-slop/rules/no-ambient-nondeterminism';
 import { noChainedTypeAssertionsRule } from '#anti-slop/rules/no-chained-type-assertions';
 import { noConditionalEmptyObjectSpreadRule } from '#anti-slop/rules/no-conditional-empty-object-spread';
 import { noKnownValueWideningRule } from '#anti-slop/rules/no-known-value-widening';
@@ -15,12 +16,14 @@ import { noUnknownTypeAliasesRule } from '#anti-slop/rules/no-unknown-type-alias
 import { noUnsafeDictionaryTypeRule } from '#anti-slop/rules/no-unsafe-dictionary-type';
 import { noWidenThenAssertRule } from '#anti-slop/rules/no-widen-then-assert';
 import { requireSafetyCommentForTypeAssertionRule } from '#anti-slop/rules/require-safety-comment-for-type-assertion';
+import { requireSuppressionReasonRule } from '#anti-slop/rules/require-suppression-reason';
 
 /** Generic Oxlint rules that reject low-evidence and low-signal implementation patterns. */
 const antiSlopPlugin = eslintCompatPlugin(
 	{
 		meta: { name: 'anti-slop' },
 		rules: {
+			'no-ambient-nondeterminism': noAmbientNondeterminismRule,
 			'no-chained-type-assertions': noChainedTypeAssertionsRule,
 			'no-conditional-empty-object-spread': noConditionalEmptyObjectSpreadRule,
 			'no-known-value-widening': noKnownValueWideningRule,
@@ -36,6 +39,7 @@ const antiSlopPlugin = eslintCompatPlugin(
 			'no-unknown-type-aliases': noUnknownTypeAliasesRule,
 			'no-widen-then-assert': noWidenThenAssertRule,
 			'require-safety-comment-for-type-assertion': requireSafetyCommentForTypeAssertionRule,
+			'require-suppression-reason': requireSuppressionReasonRule,
 		},
 	},
 );

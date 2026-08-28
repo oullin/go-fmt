@@ -13,7 +13,7 @@ const tsx = fileURLToPath(
 	import.meta.resolve('tsx'),
 );
 
-async function withFixture(files: Record<string, string>, fn: (dir: string) => Promise<void>): Promise<void> {
+async function withFixture(files: Record<string, string>, fn: (dir: string) => void | Promise<void>): Promise<void> {
 	const dir = await mkdtemp(
 		join(
 			tmpdir(),
@@ -48,7 +48,7 @@ test('accepts valid TypeScript and Vue script blocks', async () => {
 			'valid.ts': 'const value = computed(() => source.value.trim().toLowerCase());\n',
 			'Valid.vue': '<script setup lang="ts">\nconst value = 1;\n</script>\n<template>{{ value }}</template>\n',
 		},
-		async (dir) => {
+		(dir) => {
 			const result = spawnSync(
 				process.execPath,
 				['--import', tsx, script, 'valid.ts', 'Valid.vue'],
@@ -67,7 +67,7 @@ test('accepts Vue TSX and JSX script blocks', async () => {
 			'Component.vue': '<script setup lang="tsx">\nconst view = <section>Ready</section>;\n</script>\n',
 			'Legacy.vue': "<script lang='jsx'>\nconst view = <section>Ready</section>;\n</script>\n",
 		},
-		async (dir) => {
+		(dir) => {
 			const result = spawnSync(
 				process.execPath,
 				['--import', tsx, script, 'Component.vue', 'Legacy.vue'],
@@ -87,7 +87,7 @@ test('accepts standalone TSX, MTS, and CTS files', async () => {
 			'loader.mts': 'export const load = async (): Promise<number> => 1;\n',
 			'legacy.cts': 'export const value: number = 1;\n',
 		},
-		async (dir) => {
+		(dir) => {
 			const result = spawnSync(
 				process.execPath,
 				['--import', tsx, script, 'Screen.tsx', 'loader.mts', 'legacy.cts'],
@@ -105,7 +105,7 @@ test('reports TSX syntax errors on original file lines', async () => {
 		{
 			'Broken.tsx': 'export const Screen = () => <section>Ready</div>;\n',
 		},
-		async (dir) => {
+		(dir) => {
 			const result = spawnSync(
 				process.execPath,
 				['--import', tsx, script, 'Broken.tsx'],
@@ -123,7 +123,7 @@ test('reports Vue syntax errors on original file lines', async () => {
 		{
 			'Broken.vue': '<template>\n\t<div />\n</template>\n<script setup lang="ts">\nconst broken = ;\n</script>\n',
 		},
-		async (dir) => {
+		(dir) => {
 			const result = spawnSync(
 				process.execPath,
 				['--import', tsx, script, 'Broken.vue'],
@@ -142,7 +142,7 @@ test('fails with a clear diagnostic for corrupted formatter output', async () =>
 		{
 			'useAppController.ts': 'const normalizedDebouncedSearch = computed(() => debouncedSearch.value.trim().toLowerCase()););\n',
 		},
-		async (dir) => {
+		(dir) => {
 			const result = spawnSync(
 				process.execPath,
 				['--import', tsx, script, 'useAppController.ts'],
@@ -161,7 +161,7 @@ test('skips missing paths and ignores non-source arguments', async () => {
 		{
 			'notes.md': '# Notes\n',
 		},
-		async (dir) => {
+		(dir) => {
 			const result = spawnSync(
 				process.execPath,
 				['--import', tsx, script, 'missing.ts', 'notes.md'],

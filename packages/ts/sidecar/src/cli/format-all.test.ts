@@ -78,7 +78,7 @@ test('mapPool processes every item, preserves order, and honors the limit', asyn
 			peak = Math.max(peak, active);
 
 			await new Promise((resolvePromise) => {
-				return setTimeout(resolvePromise, 1);
+				setTimeout(resolvePromise, 1);
 			});
 
 			active--;

@@ -113,7 +113,7 @@ export class FluentChainPass implements FormattingPass {
 			return null;
 		}
 
-		const operator = document.slice(objectEnd, propertyStart).replace(/[ \t\r\n]/g, '');
+		const operator = document.slice(objectEnd, propertyStart).replaceAll(/[ \t\r\n]/g, '');
 
 		if (operator !== '.' && operator !== '?.') {
 			return null;

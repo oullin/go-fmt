@@ -225,8 +225,8 @@ export class DeclarationReorderPass implements FormattingPass {
 			const names = this.#declaredNames([node]);
 
 			if (
-				group.slice(i + 1).some((node) => {
-					return !this.#isMultiline(document, node) && this.#usesAnyIdentifier(node, names);
+				group.slice(i + 1).some((later) => {
+					return !this.#isMultiline(document, later) && this.#usesAnyIdentifier(later, names);
 				})
 			) {
 				return false;

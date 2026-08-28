@@ -140,7 +140,7 @@ export class ExpandedCallPass implements FormattingPass {
 	#shouldExpandCall(call: Node): boolean {
 		const args = this.#callArguments(call);
 
-		return !this.#isMethodCall(call) && args.length > 0 && args.some((argument) => this.#isComplexArgument(argument));
+		return !this.#isMethodCall(call) && args.some((argument) => this.#isComplexArgument(argument));
 	}
 
 	#collectParents(node: Node, parents: WeakMap<Node, Node>): void {

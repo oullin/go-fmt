@@ -15,6 +15,7 @@ import { noUnknownTypeAliasesRule } from '#anti-slop/rules/no-unknown-type-alias
 import { noUnsafeDictionaryTypeRule } from '#anti-slop/rules/no-unsafe-dictionary-type';
 import { noWidenThenAssertRule } from '#anti-slop/rules/no-widen-then-assert';
 import { requireSafetyCommentForTypeAssertionRule } from '#anti-slop/rules/require-safety-comment-for-type-assertion';
+import { requireSuppressionReasonRule } from '#anti-slop/rules/require-suppression-reason';
 
 /** Generic Oxlint rules that reject low-evidence and low-signal implementation patterns. */
 const antiSlopPlugin = eslintCompatPlugin(
@@ -36,6 +37,7 @@ const antiSlopPlugin = eslintCompatPlugin(
 			'no-unknown-type-aliases': noUnknownTypeAliasesRule,
 			'no-widen-then-assert': noWidenThenAssertRule,
 			'require-safety-comment-for-type-assertion': requireSafetyCommentForTypeAssertionRule,
+			'require-suppression-reason': requireSuppressionReasonRule,
 		},
 	},
 );

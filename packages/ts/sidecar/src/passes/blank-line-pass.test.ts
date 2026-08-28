@@ -112,3 +112,43 @@ test('returns no edits for source with syntax errors', () => {
 
 	assert.deepEqual(pass.computeEdits(SourceDocument.of('fixture.ts', 'function broken( {\n')), []);
 });
+
+test('keeps consecutive empty case labels tight and still spaces the ones with bodies', () => {
+	const pass = makePass();
+
+	// oxlint's `no-fallthrough` reports an empty `case` as a fallthrough once a
+	// blank line splits it from the label below, so the group has to stay tight.
+	const source = [
+		'export function classify(value: string): number {',
+		'\tswitch (value) {',
+		"\t\tcase 'a':",
+		"\t\tcase 'b':",
+		'\t\t\treturn 1;',
+		'\t\tdefault:',
+		"\t\tcase 'c':",
+		'\t\t\treturn 2;',
+		'\t}',
+		'}',
+		'',
+	].join('\n');
+
+	const output = editApplier.apply(source, pass.computeEdits(SourceDocument.of('fixture.ts', source)));
+
+	assert.equal(
+		output,
+		[
+			'export function classify(value: string): number {',
+			'\tswitch (value) {',
+			"\t\tcase 'a':",
+			"\t\tcase 'b':",
+			'\t\t\treturn 1;',
+			'',
+			'\t\tdefault:',
+			"\t\tcase 'c':",
+			'\t\t\treturn 2;',
+			'\t}',
+			'}',
+			'',
+		].join('\n'),
+	);
+});

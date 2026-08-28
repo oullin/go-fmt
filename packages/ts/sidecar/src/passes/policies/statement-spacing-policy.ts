@@ -59,6 +59,13 @@ export class StatementSpacingPolicy {
 	 * @returns `true` when the pair must be separated by a blank line.
 	 */
 	needsBlankLine(previous: Node, next: Node): boolean {
+		// A `case` with no consequent is one label of a fallthrough group. A blank line
+		// inside the group reads wrong, and oxlint's `no-fallthrough` reports the split
+		// label as an unintended fallthrough while the tight form is accepted.
+		if (this.#isGroupedCaseLabel(previous, next)) {
+			return false;
+		}
+
 		if (this.#hasContentBoundary(previous, next)) {
 			return true;
 		}
@@ -88,6 +95,14 @@ export class StatementSpacingPolicy {
 		}
 
 		return this.#blockHavingStatements.has(previous.type);
+	}
+
+	#isGroupedCaseLabel(previous: Node, next: Node): boolean {
+		if (previous.type !== 'SwitchCase' || next.type !== 'SwitchCase') {
+			return false;
+		}
+
+		return this.#ast.childNodes(previous, 'consequent').length === 0;
 	}
 
 	#hasContentBoundary(previous: Node, next: Node): boolean {

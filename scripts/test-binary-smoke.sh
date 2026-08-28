@@ -133,4 +133,34 @@ for rule in 'typescript(consistent-type-imports)' 'oxc(erasing-op)' 'unicorn(pre
 	fi
 done
 
+# `no-fallthrough` ships in the bundled config, and oxlint reports an empty
+# `case` label as a fallthrough once a blank line splits it from the label
+# below — the blank-line pass used to insert exactly that. Format first, then
+# lint what came out: the two halves of the binary have to agree on the result.
+fallthrough_fixture="${tmp_root}/fallthrough-fixture"
+
+mkdir -p "$fallthrough_fixture"
+cd "$fallthrough_fixture"
+
+git init --quiet .
+
+printf "export function classify(value: string): number {\n\tswitch (value) {\n\t\tcase 'a':\n\t\tcase 'b':\n\t\t\treturn 1;\n\t\tdefault:\n\t\t\treturn 0;\n\t}\n}\n" > switch.ts
+
+XDG_CACHE_HOME="${tmp_root}/cache" "$bin" format .
+
+expected_switch=$'export function classify(value: string): number {\n\tswitch (value) {\n\t\tcase \'a\':\n\t\tcase \'b\':\n\t\t\treturn 1;\n\n\t\tdefault:\n\t\t\treturn 0;\n\t}\n}\n'
+
+if ! diff <(printf '%s' "$expected_switch") switch.ts; then
+	printf 'the formatter split a grouped case label group\n' >&2
+	exit 1
+fi
+
+fallthrough_log="${tmp_root}/fallthrough.log"
+
+if ! XDG_CACHE_HOME="${tmp_root}/cache" "$bin" lint . > "$fallthrough_log" 2>&1; then
+	printf "lint rejected the formatter's own output for grouped case labels\n" >&2
+	cat "$fallthrough_log" >&2
+	exit 1
+fi
+
 printf 'binary smoke test passed\n'

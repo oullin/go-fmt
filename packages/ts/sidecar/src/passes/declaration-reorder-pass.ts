@@ -90,11 +90,8 @@ export class DeclarationReorderPass implements FormattingPass {
 
 		switch (node.type) {
 			case 'ArrowFunctionExpression':
-
 			case 'FunctionExpression':
-
 			case 'Identifier':
-
 			case 'Literal':
 				return true;
 

@@ -89,6 +89,8 @@ printf "import { Foo } from './types';\n\nexport const value: Foo = { a: 1 };\n"
 # the base set rather than extending it, so dropping a name here silently
 # switches its rules off — which is how the oxc plugin went missing once already.
 printf 'export function erasing(y: number): number {\n\treturn y * 0;\n}\n' > oxc.ts
+printf "import path from 'path';\n\nexport const p = path.sep;\n" > unicorn.ts
+printf 'const a = 1;\nconst b = 2;\n\nexport { a as dup };\nexport { b as dup };\n' > importdup.ts
 
 lint_log="${tmp_root}/lint.log"
 
@@ -98,7 +100,7 @@ if XDG_CACHE_HOME="${tmp_root}/cache" "$bin" lint . > "$lint_log" 2>&1; then
 	exit 1
 fi
 
-for rule in 'typescript(consistent-type-imports)' 'oxc(erasing-op)'; do
+for rule in 'typescript(consistent-type-imports)' 'oxc(erasing-op)' 'unicorn(prefer-node-protocol)' 'import(export)'; do
 	if ! grep -qF "$rule" "$lint_log"; then
 		printf 'the bundled oxlint config did not report %s\n' "$rule" >&2
 		cat "$lint_log" >&2

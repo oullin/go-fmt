@@ -14,6 +14,11 @@ const editApplier = new EditApplier();
 const targets = new FileTargetPolicy({ embeddedBlocks: new EmbeddedBlockSplitter({ vueScript: new VueScript(), markdownFences: new MarkdownFences() }) });
 const pass = new ExpandedCallPass({ parser: new SourceParser(), ast: new AstReader(), edits: editApplier, targets });
 
+/** The source between the first and last backtick — a template's literal bytes. */
+function templateBody(source: string): string {
+	return source.slice(source.indexOf('`') + 1, source.lastIndexOf('`'));
+}
+
 function format(input: string, virtualName: string): string {
 	const edits = pass.computeEdits(SourceDocument.of(virtualName, input));
 
@@ -153,11 +158,6 @@ describe('expanded call formatter', () => {
 
 		assert.equal(format(output, 'fixture.ts'), output);
 	});
-
-	/** The source between the first and last backtick — a template's literal bytes. */
-	const templateBody = (source: string): string => {
-		return source.slice(source.indexOf('`') + 1, source.lastIndexOf('`'));
-	};
 
 	it('reaches a fixed point for a tab-indented template literal', () => {
 		const input = ['const Harness = defineComponent({', '\ttemplate: `', '\t\t<div>', '\t\t\t<span>hello</span>', '\t\t</div>', '\t`,', '});', ''].join('\n');

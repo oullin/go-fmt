@@ -34,7 +34,7 @@ const importArbitrary = fc.constantFrom('alpha-package', 'beta-package', 'gamma-
 });
 
 const templateLiteralArbitrary = identifierArbitrary.map((name) => {
-	return 'const ' + name + 'Label = `value-$' + '{1}`;';
+	return `const ${name}Label = \`value-\${1}\`;`;
 });
 
 const commentArbitrary = fc.constantFrom('// formatter note', '/* formatter block note */');

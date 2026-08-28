@@ -1,10 +1,12 @@
 {
 	"$schema": "https://cdn.jsdelivr.net/npm/oxlint@1.75.0/configuration_schema.json",
 	"extends": ["./.oxlintrc.json"],
-	"plugins": ["typescript", "oxc"],
+	"plugins": ["typescript", "oxc", "unicorn", "import"],
 	"ignorePatterns": ["tools/oxlint/anti-slop/**"],
 	"jsPlugins": [{ "name": "anti-slop", "specifier": "./tools/oxlint/anti-slop/index.ts" }],
 	"rules": {
+		"curly": "error",
+		"no-console": ["error", { "allow": ["error"] }],
 		"no-restricted-imports": [
 			"error",
 			{
@@ -16,6 +18,29 @@
 				]
 			}
 		],
+		"no-shadow": "error",
+		"no-useless-concat": "error",
+		"no-warning-comments": ["error", { "terms": ["@nocommit"] }],
+		"object-shorthand": "error",
+		"prefer-arrow-callback": ["error", { "allowNamedFunctions": true }],
+		"import/no-namespace": "error",
+		"typescript/array-type": ["error", { "default": "array" }],
+		"unicorn/catch-error-name": ["error", { "name": "cause" }],
+		"unicorn/consistent-function-scoping": "error",
+		"unicorn/numeric-separators-style": "error",
+		"unicorn/prefer-array-flat-map": "error",
+		"unicorn/prefer-array-index-of": "error",
+		"unicorn/prefer-array-some": "error",
+		"unicorn/prefer-at": "error",
+		"unicorn/prefer-import-meta-properties": "error",
+		"unicorn/prefer-native-coercion-functions": "error",
+		"unicorn/prefer-optional-catch-binding": "error",
+		"unicorn/prefer-single-call": "error",
+		"unicorn/prefer-string-raw": "error",
+		"unicorn/prefer-string-replace-all": "error",
+		"unicorn/prefer-string-slice": "error",
+		"unicorn/prefer-structured-clone": "error",
+		"unicorn/text-encoding-identifier-case": "error",
 		"anti-slop/no-chained-type-assertions": "error",
 		"anti-slop/no-conditional-empty-object-spread": "error",
 		"anti-slop/no-known-value-widening": "error",
@@ -31,5 +56,13 @@
 		"anti-slop/no-unsafe-dictionary-type": "error",
 		"anti-slop/no-widen-then-assert": "error",
 		"anti-slop/require-safety-comment-for-type-assertion": "error"
-	}
+	},
+	"overrides": [
+		{
+			"files": ["packages/ts/sidecar/src/cli/reporter.ts"],
+			"rules": {
+				"no-console": "off"
+			}
+		}
+	]
 }

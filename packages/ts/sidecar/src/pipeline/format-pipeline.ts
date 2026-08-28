@@ -72,7 +72,7 @@ export class FormatPipeline {
 	 * @param mode - Whether the pass checks or writes changes.
 	 * @returns One effect-free reporting outcome per input path.
 	 */
-	async runPass(formatter: FileFormatter, files: string[], mode: FormatMode): Promise<PassOutcome[]> {
+	runPass(formatter: FileFormatter, files: string[], mode: FormatMode): Promise<PassOutcome[]> {
 		return mapPool(
 			files,
 			availableParallelism(),
@@ -122,7 +122,7 @@ export class FormatPipeline {
 	 * @param files - The source paths to validate.
 	 * @returns Carried read and parse failures in deterministic input order.
 	 */
-	async validate(files: string[]): Promise<ValidationFailure[]> {
+	validate(files: string[]): Promise<ValidationFailure[]> {
 		return this.#validator.validate(files);
 	}
 }

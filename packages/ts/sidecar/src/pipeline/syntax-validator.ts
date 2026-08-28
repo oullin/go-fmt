@@ -22,7 +22,7 @@ export class SyntaxValidator {
 	readonly #parser: SourceParser;
 
 	static #scriptPrefix(content: string, scriptStart: number): string {
-		return content.slice(0, scriptStart).replace(/[^\r\n]/g, ' ');
+		return content.slice(0, scriptStart).replaceAll(/[^\r\n]/g, ' ');
 	}
 
 	/**

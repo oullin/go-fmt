@@ -284,6 +284,31 @@ concurrency: 0
 | `not_name`              | list | empty                            | Globs matched against file names.           |
 | `concurrency`           | int  | `0`                              | Max files in parallel (`0` = `NumCPU`).     |
 
+### TS/Vue lint (`.oxlintrc.json`)
+
+The binary always starts with its bundled Oxlint policy. A repository can add exceptions or stricter rules without copying that policy into its own config:
+
+```jsonc
+// .oxlintrc.jsonc
+{
+	"rules": {
+		"require-await": "off",
+		"max-params": ["error", { "max": 8 }],
+	},
+}
+```
+
+Configuration layers apply from least to most specific:
+
+1. **The bundled policy.** This remains active for every linted file.
+2. **The repository-root config.** fmtkit recognises `.oxlintrc`, `.oxlintrc.json`, and `.oxlintrc.jsonc`.
+3. **The nearest nested config.** A package can narrow the root policy without repeating it.
+4. **`FMTKIT_OXLINTRC`.** This optional explicit overlay applies to every file and wins over repository configs.
+
+Later layers override earlier rules through Oxlint's native `extends` semantics. Existing `extends` entries and paths relative to a config keep their original meaning. More than one recognised config in the same directory is an error. TypeScript configs such as `oxlint.config.ts` are not supported by fmtkit's standalone runtime.
+
+fmtkit materialises each composed entry beside its most specific source config so Oxlint resolves relative paths correctly, then removes it when the command finishes. That directory must therefore be writable while `fmtkit lint`, `fmtkit format`, or `fmtkit format-all` runs.
+
 ### TS/Vue (`.oxfmtrc.json`)
 
 The binary ships a bundled `.oxfmtrc.json` (tabs, single quotes, trailing commas, 200-column width) applied by default, so you get a consistent style with zero setup. Resolution is by precedence, first match wins:

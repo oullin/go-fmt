@@ -73,6 +73,10 @@ func stubSupportDir(t *testing.T) (string, string) {
 		t.Fatalf("write stub sidecar: %v", err)
 	}
 
+	if err := os.WriteFile(filepath.Join(dir, ".oxlintrc.json"), []byte("{}"), 0o644); err != nil {
+		t.Fatalf("write stub oxlint config: %v", err)
+	}
+
 	return dir, logFile
 }
 

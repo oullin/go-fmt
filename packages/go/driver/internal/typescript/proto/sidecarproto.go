@@ -67,7 +67,7 @@ const (
 	// OxfmtConfigEnv forces a specific oxfmt configuration path.
 	OxfmtConfigEnv = "FMTKIT_OXFMTRC"
 
-	// OxlintConfigEnv forces a specific oxlint configuration path.
+	// OxlintConfigEnv adds a final Oxlint configuration overlay.
 	OxlintConfigEnv = "FMTKIT_OXLINTRC"
 
 	// SourcesCwdEnv overrides the working directory file collection runs in.

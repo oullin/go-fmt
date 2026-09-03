@@ -2,6 +2,7 @@ package runtime
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -9,6 +10,7 @@ import (
 	"path/filepath"
 
 	"go.ollin.sh/fmtkit/driver/internal/gitfiles"
+	"go.ollin.sh/fmtkit/driver/internal/typescript/oxlintconfig"
 	"go.ollin.sh/fmtkit/driver/internal/typescript/proto"
 	"go.ollin.sh/fmtkit/driver/internal/typescript/sourcefiles"
 )
@@ -119,14 +121,55 @@ func (i Invoker) RunLint(ctx context.Context, req Request) error {
 		bin = i.Assets.Sidecar()
 	}
 
-	command := proto.OxlintCommand{
-		ViaSidecar: viaSidecar,
-		Fix:        req.Fix,
-		Config:     i.oxlintConfigFor(cwd),
-		Files:      files,
+	return oxlintconfig.WithBatches(oxlintconfig.Request{
+		RootDir:       cwd,
+		BundledConfig: i.Assets.OxlintConfig(),
+		GlobalOverlay: i.Env.OxlintConfig,
+		Files:         files,
+	}, func(batches []oxlintconfig.Batch) error {
+		return i.runOxlintBatches(ctx, bin, viaSidecar, batches, req)
+	})
+}
+
+func (i Invoker) runOxlintBatches(
+	ctx context.Context,
+	bin string,
+	viaSidecar bool,
+	batches []oxlintconfig.Batch,
+	req Request,
+) error {
+	var firstLintFailure error
+
+	for _, batch := range batches {
+		command := proto.OxlintCommand{
+			ViaSidecar: viaSidecar,
+			Fix:        req.Fix,
+			Config:     batch.ConfigPath,
+			Files:      batch.Files,
+		}
+
+		err := i.spawn(ctx, bin, command.Argv(), req)
+
+		if err == nil {
+			continue
+		}
+
+		if ctx.Err() != nil {
+			return err
+		}
+
+		var exitError *exec.ExitError
+
+		if !errors.As(err, &exitError) {
+			return err
+		}
+
+		if firstLintFailure == nil {
+			firstLintFailure = err
+		}
 	}
 
-	return i.spawn(ctx, bin, command.Argv(), req)
+	return firstLintFailure
 }
 
 // pipelineExecutable resolves the executable spawned for the pipeline: a
@@ -191,24 +234,6 @@ func (i Invoker) oxfmtConfigFor(ctx context.Context, cwd string, stderr io.Write
 	}
 
 	return i.Assets.OxfmtConfig()
-}
-
-// oxlintConfigFor treats both the extensionless .oxlintrc and .oxlintrc.* as
-// project configuration.
-func (i Invoker) oxlintConfigFor(cwd string) string {
-	if i.Env.OxlintConfig != "" {
-		return existingFile(i.Env.OxlintConfig)
-	}
-
-	if existingFile(filepath.Join(cwd, ".oxlintrc")) != "" {
-		return ""
-	}
-
-	if matches, err := filepath.Glob(filepath.Join(cwd, ".oxlintrc.*")); err == nil && len(matches) > 0 {
-		return ""
-	}
-
-	return i.Assets.OxlintConfig()
 }
 
 // migration views this invoker as the PrettierMigration that shares its assets

@@ -51,6 +51,14 @@ func TestParseLintSummaryMatchesErrorLine(t *testing.T) {
 	}
 }
 
+func TestParseLintSummaryAggregatesBatches(t *testing.T) {
+	log := "Found 2 warnings and 1 error.\nFound 1 warning and 3 errors.\n"
+
+	if got := ParseLintSummary(log).Result; got != "Found 3 warnings and 4 errors." {
+		t.Fatalf("Result = %q, want aggregate batch totals", got)
+	}
+}
+
 func TestParseLintSummaryNoMatch(t *testing.T) {
 	if got := ParseLintSummary("nothing interesting\n").Result; got != "" {
 		t.Fatalf("Result = %q, want empty when no summary line", got)

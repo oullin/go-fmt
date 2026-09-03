@@ -107,8 +107,11 @@ cd "$lint_fixture"
 
 git init --quiet .
 
+printf '// Project exceptions overlay the bundled policy; they do not replace it.\n{\n\t"rules": {\n\t\t"require-await": "off"\n\t}\n}\n' > .oxlintrc.jsonc
+
 printf 'export type Foo = { a: number };\n' > types.ts
 printf "import { Foo } from './types';\n\nexport const value: Foo = { a: 1 };\n" > uses.ts
+printf 'export async function localException(): Promise<number> {\n\treturn 1;\n}\n' > local-exception.ts
 
 # One probe per plugin the config names. oxlint's `plugins` field *overwrites*
 # the base set rather than extending it, so dropping a name here silently
@@ -116,6 +119,10 @@ printf "import { Foo } from './types';\n\nexport const value: Foo = { a: 1 };\n"
 printf 'export function erasing(y: number): number {\n\treturn y * 0;\n}\n' > oxc.ts
 printf "import path from 'path';\n\nexport const p = path.sep;\n" > unicorn.ts
 printf 'const a = 1;\nconst b = 2;\n\nexport { a as dup };\nexport { b as dup };\n' > importdup.ts
+
+mkdir -p generated
+printf '{"rules":{"typescript/no-explicit-any":"off"}}\n' > generated/.oxlintrc.json
+printf 'export const generatedValue: any = 1;\n' > generated/client.ts
 
 lint_log="${tmp_root}/lint.log"
 
@@ -132,6 +139,20 @@ for rule in 'typescript(consistent-type-imports)' 'oxc(erasing-op)' 'unicorn(pre
 		exit 1
 	fi
 done
+
+for rule in 'require-await' 'typescript(no-explicit-any)'; do
+	if grep -qF "$rule" "$lint_log"; then
+		printf 'the project oxlint overlay did not override %s\n' "$rule" >&2
+		cat "$lint_log" >&2
+		exit 1
+	fi
+done
+
+if find . -name '.fmtkit-oxlint-*' -print -quit | grep -q .; then
+	printf 'lint left a composed oxlint config in the project\n' >&2
+	find . -name '.fmtkit-oxlint-*' -print >&2
+	exit 1
+fi
 
 # `no-fallthrough` ships in the bundled config, and oxlint reports an empty
 # `case` label as a fallthrough once a blank line splits it from the label

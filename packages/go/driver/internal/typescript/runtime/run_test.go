@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"io"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -335,5 +336,55 @@ func TestRunLintHonorsOxlintBinOverride(t *testing.T) {
 
 	if strings.HasPrefix(strings.TrimSpace(stdout.String()), "oxlint") {
 		t.Fatalf("mode argument passed to standalone oxlint override:\n%s", stdout.String())
+	}
+}
+
+func TestRunLintRunsEveryConfigBatchAfterViolations(t *testing.T) {
+	repo := gitScratchRepo(t, map[string]string{
+		"app.ts":         "export const root = 1;\n",
+		".oxlintrc.json": "{}",
+	})
+	nested := filepath.Join(repo, "package")
+
+	if err := os.MkdirAll(nested, 0o755); err != nil {
+		t.Fatalf("create nested package: %v", err)
+	}
+
+	if err := os.WriteFile(filepath.Join(nested, ".oxlintrc.json"), []byte("{}"), 0o644); err != nil {
+		t.Fatalf("write nested config: %v", err)
+	}
+
+	if err := os.WriteFile(filepath.Join(nested, "client.ts"), []byte("export const nested = 1;\n"), 0o644); err != nil {
+		t.Fatalf("write nested source: %v", err)
+	}
+
+	support := supportWithStub(t)
+	logPath := filepath.Join(support.Dir, "lint-runs")
+	script := "#!/bin/sh\nprintf 'run\\n' >> \"" + logPath + "\"\nexit 1\n"
+
+	if err := os.WriteFile(support.Sidecar(), []byte(script), 0o755); err != nil {
+		t.Fatalf("write failing sidecar: %v", err)
+	}
+
+	if err := os.WriteFile(filepath.Join(support.Dir, ".oxlintrc.json"), []byte("{}"), 0o644); err != nil {
+		t.Fatalf("write bundled config: %v", err)
+	}
+
+	t.Setenv(proto.SourcesCwdEnv, repo)
+
+	err := NewInvoker(support).RunLint(context.Background(), Request{Stdout: io.Discard, Stderr: io.Discard})
+
+	if err == nil {
+		t.Fatal("RunLint returned nil after batch violations")
+	}
+
+	log, readErr := os.ReadFile(logPath)
+
+	if readErr != nil {
+		t.Fatalf("read lint runs: %v", readErr)
+	}
+
+	if got := strings.Count(string(log), "run\n"); got != 2 {
+		t.Fatalf("lint runs = %d, want 2", got)
 	}
 }

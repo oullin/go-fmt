@@ -296,11 +296,18 @@ func materialise(chain configChain) (string, error) {
 		return "", fmt.Errorf("read oxlint overlay %q: %w", highest, err)
 	}
 
-	standard, err := hujson.Standardize(data)
+	documentSyntax, err := hujson.Parse(data)
 
 	if err != nil {
 		return "", fmt.Errorf("parse oxlint overlay %q: %w", highest, err)
 	}
+
+	if hasTrailingComma(documentSyntax) {
+		return "", fmt.Errorf("parse oxlint overlay %q: trailing comma is not supported by Oxlint", highest)
+	}
+
+	documentSyntax.Standardize()
+	standard := documentSyntax.Pack()
 
 	var document map[string]json.RawMessage
 
@@ -316,9 +323,18 @@ func materialise(chain configChain) (string, error) {
 		}
 	}
 
-	lower := make([]string, 0, len(chain.overlays)+len(originalExtends))
-	lower = append(lower, chain.base)
-	lower = append(lower, chain.overlays[:len(chain.overlays)-1]...)
+	lowerLayers := make([]string, 0, len(chain.overlays))
+	lowerLayers = append(lowerLayers, chain.base)
+	lowerLayers = append(lowerLayers, chain.overlays[:len(chain.overlays)-1]...)
+
+	lower := make([]string, 0, len(lowerLayers)+len(originalExtends))
+
+	for _, path := range lowerLayers {
+		if !extendsPath(originalExtends, filepath.Dir(highest), path) {
+			lower = append(lower, path)
+		}
+	}
+
 	lower = append(lower, originalExtends...)
 
 	extends, err := json.Marshal(lower)
@@ -371,6 +387,61 @@ func materialise(chain configChain) (string, error) {
 	keep = true
 
 	return path, nil
+}
+
+func extendsPath(extends []string, configDirectory, candidate string) bool {
+	for _, path := range extends {
+		if !filepath.IsAbs(path) {
+			path = filepath.Join(configDirectory, path)
+		}
+
+		if samePath(path, candidate) {
+			return true
+		}
+	}
+
+	return false
+}
+
+func samePath(left, right string) bool {
+	left = filepath.Clean(left)
+	right = filepath.Clean(right)
+
+	resolvedLeft, leftErr := filepath.EvalSymlinks(left)
+	resolvedRight, rightErr := filepath.EvalSymlinks(right)
+
+	if leftErr == nil && rightErr == nil {
+		return resolvedLeft == resolvedRight
+	}
+
+	return left == right
+}
+
+func hasTrailingComma(value hujson.Value) bool {
+	switch value := value.Value.(type) {
+	case *hujson.Object:
+		if len(value.Members) > 0 && value.Members[len(value.Members)-1].Value.AfterExtra != nil {
+			return true
+		}
+
+		for _, member := range value.Members {
+			if hasTrailingComma(member.Value) {
+				return true
+			}
+		}
+	case *hujson.Array:
+		if len(value.Elements) > 0 && value.Elements[len(value.Elements)-1].AfterExtra != nil {
+			return true
+		}
+
+		for _, element := range value.Elements {
+			if hasTrailingComma(element) {
+				return true
+			}
+		}
+	}
+
+	return false
 }
 
 func removeGenerated(paths []string) error {

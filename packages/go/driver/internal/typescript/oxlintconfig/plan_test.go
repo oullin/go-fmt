@@ -149,6 +149,30 @@ func TestWithBatchesKeepsConsumerExtendsAfterFmtkitLayers(t *testing.T) {
 	}
 }
 
+func TestWithBatchesDoesNotInjectAnExplicitlyExtendedRootTwice(t *testing.T) {
+	root := t.TempDir()
+	base := writeConfig(t, t.TempDir(), ".oxlintrc.json", `{}`)
+	writeConfig(t, root, ".oxlintrc.json", `{"overrides":[{"files":["*.test.ts"],"rules":{"no-console":"off"}}]}`)
+	nestedDir := filepath.Join(root, "package")
+	writeConfig(t, nestedDir, ".oxlintrc.json", `{"extends":["../.oxlintrc.json"]}`)
+	file := writeConfig(t, nestedDir, "app.ts", "export const value = 1;\n")
+
+	err := WithBatches(Request{RootDir: root, BundledConfig: base, Files: []string{file}}, func(batches []Batch) error {
+		config := readGeneratedConfig(t, batches[0].ConfigPath)
+		want := []string{base, "../.oxlintrc.json"}
+
+		if !reflect.DeepEqual(config.Extends, want) {
+			t.Fatalf("extends = %#v, want %#v", config.Extends, want)
+		}
+
+		return nil
+	})
+
+	if err != nil {
+		t.Fatalf("WithBatches: %v", err)
+	}
+}
+
 func TestWithBatchesAppliesExplicitOverlayLast(t *testing.T) {
 	root := t.TempDir()
 	base := writeConfig(t, t.TempDir(), ".oxlintrc.json", `{}`)
@@ -198,6 +222,21 @@ func TestWithBatchesRejectsAmbiguousDirectoryConfig(t *testing.T) {
 
 	if err == nil || !strings.Contains(err.Error(), "multiple oxlint configs") {
 		t.Fatalf("error = %v, want ambiguous-config failure", err)
+	}
+}
+
+func TestWithBatchesRejectsTrailingCommasLikeOxlint(t *testing.T) {
+	root := t.TempDir()
+	base := writeConfig(t, t.TempDir(), ".oxlintrc.json", `{}`)
+	writeConfig(t, root, ".oxlintrc.jsonc", `{"rules":{"eqeqeq":"error",},}`)
+	file := writeConfig(t, root, "app.ts", "export const value = 1;\n")
+
+	err := WithBatches(Request{RootDir: root, BundledConfig: base, Files: []string{file}}, func([]Batch) error {
+		return nil
+	})
+
+	if err == nil || !strings.Contains(err.Error(), "trailing comma") {
+		t.Fatalf("error = %v, want Oxlint-compatible trailing-comma failure", err)
 	}
 }
 

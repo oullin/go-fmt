@@ -6,6 +6,7 @@ require (
 	github.com/fatih/color v1.19.0
 	github.com/mattn/go-isatty v0.0.24
 	github.com/spf13/viper v1.21.0
+	github.com/tailscale/hujson v0.0.0-20260727124030-b80ff77dac4f
 	golang.org/x/tools v0.48.0
 )
 

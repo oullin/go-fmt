@@ -234,7 +234,7 @@ func TestRunLintFixPassesFixFlag(t *testing.T) {
 	}
 }
 
-func TestRunLintSkipsBundledConfigWhenProjectHasOne(t *testing.T) {
+func TestRunLintComposesBundledConfigWhenProjectHasOne(t *testing.T) {
 	repo := gitScratchRepo(t, map[string]string{
 		"app.ts":         "export const a = 1;\n",
 		".oxlintrc.json": "{}",
@@ -254,8 +254,18 @@ func TestRunLintSkipsBundledConfigWhenProjectHasOne(t *testing.T) {
 		t.Fatalf("RunLint: %v\nstderr: %s", err, stderr.String())
 	}
 
-	if strings.Contains(stdout.String(), "--config") {
-		t.Fatalf("bundled config passed despite project config:\n%s", stdout.String())
+	args := strings.Split(strings.TrimSpace(stdout.String()), "\n")
+
+	if len(args) != 4 || args[0] != "oxlint" || args[1] != "--config" || args[3] != filepath.Join(repo, "app.ts") {
+		t.Fatalf("argv = %q, want oxlint with composed config and app.ts", args)
+	}
+
+	if filepath.Dir(args[2]) != repo || !strings.HasPrefix(filepath.Base(args[2]), ".fmtkit-oxlint-") {
+		t.Fatalf("config = %q, want a managed sibling of the project config", args[2])
+	}
+
+	if _, err := os.Stat(args[2]); !os.IsNotExist(err) {
+		t.Fatalf("composed config remains after lint: %v", err)
 	}
 }
 
@@ -305,6 +315,10 @@ func TestRunLintHonorsOxlintBinOverride(t *testing.T) {
 	repo := gitScratchRepo(t, map[string]string{"app.ts": "export const a = 1;\n"})
 
 	support := supportWithStub(t)
+
+	if err := os.WriteFile(filepath.Join(support.Dir, ".oxlintrc.json"), []byte("{}"), 0o644); err != nil {
+		t.Fatalf("write bundled config: %v", err)
+	}
 
 	override := filepath.Join(t.TempDir(), "oxlint")
 

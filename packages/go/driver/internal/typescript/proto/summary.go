@@ -1,7 +1,9 @@
 package proto
 
 import (
+	"fmt"
 	"regexp"
+	"strconv"
 	"strings"
 )
 
@@ -53,7 +55,7 @@ const (
 
 // lintResultPattern matches oxlint's summary line, e.g.
 // "Found 0 warnings and 0 errors."
-var lintResultPattern = regexp.MustCompile(`Found [0-9]+ warning|[0-9]+ error`)
+var lintResultPattern = regexp.MustCompile(`Found ([0-9]+) warnings? and ([0-9]+) errors?\.`)
 
 // ParsePipelineSummary scrapes the sidecar's pipeline output, taking the last
 // occurrence of each progress line.
@@ -81,18 +83,51 @@ func ParsePipelineSummary(log string) PipelineSummary {
 	return summary
 }
 
-// ParseLintSummary scrapes the sidecar's oxlint output, taking the last line
-// matching oxlint's summary pattern.
+// ParseLintSummary scrapes and totals every oxlint result line. A composed run
+// can invoke oxlint once per project-config group.
 func ParseLintSummary(log string) LintSummary {
-	var match string
+	warnings := 0
+	errors := 0
+	matches := 0
 
 	for _, line := range lines(log) {
-		if lintResultPattern.MatchString(line) {
-			match = line
+		parts := lintResultPattern.FindStringSubmatch(line)
+
+		if len(parts) == 0 {
+			continue
 		}
+
+		warningCount, warningErr := strconv.Atoi(parts[1])
+		errorCount, errorErr := strconv.Atoi(parts[2])
+
+		if warningErr != nil || errorErr != nil {
+			continue
+		}
+
+		warnings += warningCount
+		errors += errorCount
+		matches++
 	}
 
-	return LintSummary{Result: match}
+	if matches == 0 {
+		return LintSummary{}
+	}
+
+	return LintSummary{Result: fmt.Sprintf(
+		"Found %d %s and %d %s.",
+		warnings,
+		plural("warning", warnings),
+		errors,
+		plural("error", errors),
+	)}
+}
+
+func plural(word string, count int) string {
+	if count == 1 {
+		return word
+	}
+
+	return word + "s"
 }
 
 func lines(log string) []string {
